@@ -1,0 +1,43 @@
+{
+  "name": "Fieldnotes booking",
+  "models": [{
+    "id": "booking",
+    "name": "Booking",
+    "generator": "quick_random(edge_coverage(100))",
+    "startElementId": "v_Home",
+    "vertices": [
+      { "id": "v_Home", "name": "v_Home", "properties": {
+        "description": "The workshop landing page with heading Make something by hand and Book a place button.",
+        "expectation": "The landing page visibly offers the printmaking workshop at $45 per person and a Book a place button."
+      } },
+      { "id": "v_Form", "name": "v_Form", "properties": {
+        "description": "A booking form headed Book your workshop with Full name, Email address and Seats fields, a Review booking button, and NO Check your details error alert.",
+        "expectation": "The booking form has Full name, Email address and Seats fields and a Review booking button, with no validation error alert."
+      } },
+      { "id": "v_Error", "name": "v_Error", "properties": {
+        "description": "The Book your workshop form displays a Check your details validation alert containing one or more field errors.",
+        "expectation": "The booking form remains visible with a Check your details alert explaining the invalid full name, email address and seat count. There is no booking confirmation."
+      } },
+      { "id": "v_Review", "name": "v_Review", "properties": {
+        "description": "A Review your booking page shows name, email, seats, an AUD total, and Edit details and Confirm booking buttons.",
+        "expectation": "The booking review shows the submitted name, email and seat count, a total of $45 multiplied by the seat count, and Edit details and Confirm booking buttons."
+      } },
+      { "id": "v_Confirmed", "name": "v_Confirmed", "properties": {
+        "description": "A successful booking page headed You’re on the list with a confirmation message and Start again button.",
+        "expectation": "A successful confirmation headed You’re on the list names the customer, correct number of seats and booking email, and offers Start again."
+      } }
+    ],
+    "edges": [
+      { "id": "e_OpenForm", "name": "e_OpenForm", "sourceVertexId": "v_Home", "targetVertexId": "v_Form" },
+      { "id": "e_ValidateInputs", "name": "e_ValidateInputs", "sourceVertexId": "v_Form", "targetVertexId": "v_Form" },
+      { "id": "e_InvalidBooking", "name": "e_InvalidBooking", "sourceVertexId": "v_Form", "targetVertexId": "v_Error" },
+      { "id": "e_CorrectBooking", "name": "e_CorrectBooking", "sourceVertexId": "v_Error", "targetVertexId": "v_Review" },
+      { "id": "e_ValidBooking", "name": "e_ValidBooking", "sourceVertexId": "v_Form", "targetVertexId": "v_Review" },
+      { "id": "e_EditBooking", "name": "e_EditBooking", "sourceVertexId": "v_Review", "targetVertexId": "v_Form" },
+      { "id": "e_Confirm", "name": "e_Confirm", "sourceVertexId": "v_Review", "targetVertexId": "v_Confirmed" },
+      { "id": "e_StartAgain", "name": "e_StartAgain", "sourceVertexId": "v_Confirmed", "targetVertexId": "v_Home" },
+      { "id": "e_Cancel", "name": "e_Cancel", "sourceVertexId": "v_Form", "targetVertexId": "v_Home" },
+      { "id": "e_CancelError", "name": "e_CancelError", "sourceVertexId": "v_Error", "targetVertexId": "v_Home" }
+    ]
+  }]
+}
