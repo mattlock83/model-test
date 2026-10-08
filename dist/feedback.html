@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Studio inbox</title><link rel="icon" href="data:,"><style>
+body{font:17px/1.6 system-ui;background:#f4f1ea;color:#202825;max-width:600px;margin:60px auto;padding:24px}h1{font-size:42px;letter-spacing:-1px}label{display:block;margin-top:20px}input,textarea{box-sizing:border-box;width:100%;padding:12px;font:inherit;border:1px solid #aaa;border-radius:6px}button{font:inherit;background:#304cc7;color:white;padding:12px 22px;border:0;border-radius:6px;margin:24px 10px 0 0}[role=alert]{padding:16px;background:#fee3dd}textarea{min-height:120px}
+</style><body><p>FIELDNOTES / STUDIO INBOX</p><main></main><script>
+const main=document.querySelector('main');
+const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function compose(values={subject:'',message:''},errors=[]){
+ main.innerHTML=`<h1>Send a message</h1><p>A second, independent site for the model-driven test runner.</p>${errors.length?`<div role="alert"><h2>Check your message</h2>${errors.map(e=>`<p>${escape(e)}</p>`).join('')}</div>`:''}<form novalidate><label>Subject<input name="subject" value="${escape(values.subject)}"></label><label>Message<textarea name="message">${escape(values.message)}</textarea></label><button>Send message</button><button type="button">Reset form</button></form>`;
+ main.querySelector('[type=button]').onclick=()=>compose();
+ main.querySelector('form').onsubmit=event=>{
+  event.preventDefault();const data=new FormData(event.target);const values={subject:data.get('subject').trim(),message:data.get('message').trim()};const errors=[];
+  if(values.subject.length<4||values.subject.length>50)errors.push('Subject must contain 4 to 50 characters.');
+  if(values.message.length<5||values.message.length>200)errors.push('Message must contain 5 to 200 characters.');
+  if(errors.length)return compose(values,errors);
+  main.innerHTML=`<h1>Message received</h1><p role="status">Thanks. We received your message about <strong>${escape(values.subject)}</strong>.</p><button>Write another</button>`;main.querySelector('button').onclick=()=>compose();
+ };
+}
+compose();
+</script></body></html>

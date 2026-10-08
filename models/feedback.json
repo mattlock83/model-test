@@ -1,0 +1,310 @@
+{
+  "models": [
+    {
+      "id": "feedback",
+      "name": "Feedback",
+      "startElementId": "compose",
+      "generator": "quick_random(edge_coverage(100))",
+      "vertices": [
+        {
+          "id": "compose",
+          "name": "state_compose",
+          "properties": {
+            "test": {
+              "description": "Send a message without validation alert",
+              "expectation": "Send a message is shown with the appropriate form or confirmation.",
+              "match": [
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "heading",
+                    "name": "Send a message"
+                  }
+                },
+                {
+                  "type": "absent",
+                  "target": {
+                    "role": "alert"
+                  }
+                }
+              ],
+              "assertions": [
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "button",
+                    "name": "Send message"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "invalid",
+          "name": "state_invalid",
+          "properties": {
+            "test": {
+              "description": "Send a message with validation alert",
+              "expectation": "Send a message is shown with the appropriate form or confirmation.",
+              "match": [
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "heading",
+                    "name": "Send a message"
+                  }
+                },
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "alert"
+                  }
+                }
+              ],
+              "assertions": [
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "button",
+                    "name": "Send message"
+                  }
+                },
+                {
+                  "type": "text",
+                  "contains": "Check your message"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "sent",
+          "name": "state_sent",
+          "properties": {
+            "test": {
+              "description": "Message received with submitted subject and Write another button",
+              "expectation": "Message received is shown with the appropriate form or confirmation.",
+              "match": [
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "heading",
+                    "name": "Message received"
+                  }
+                }
+              ],
+              "assertions": [
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "button",
+                    "name": "Write another"
+                  }
+                },
+                {
+                  "type": "text",
+                  "contains": "{{input.subject}}"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "send",
+          "name": "action_send",
+          "sourceVertexId": "compose",
+          "targetVertexId": "sent",
+          "properties": {
+            "test": {
+              "input": {
+                "subject": "A small question",
+                "message": "When is the next session?"
+              },
+              "actions": [
+                {
+                  "type": "fill",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Subject"
+                  },
+                  "value": "{{input.subject}}"
+                },
+                {
+                  "type": "fill",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Message"
+                  },
+                  "value": "{{input.message}}"
+                },
+                {
+                  "type": "click",
+                  "target": {
+                    "role": "button",
+                    "name": "Send message"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "bad",
+          "name": "action_bad",
+          "sourceVertexId": "compose",
+          "targetVertexId": "invalid",
+          "properties": {
+            "test": {
+              "input": {
+                "subject": "x",
+                "message": ""
+              },
+              "actions": [
+                {
+                  "type": "fill",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Subject"
+                  },
+                  "value": "{{input.subject}}"
+                },
+                {
+                  "type": "fill",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Message"
+                  },
+                  "value": "{{input.message}}"
+                },
+                {
+                  "type": "click",
+                  "target": {
+                    "role": "button",
+                    "name": "Send message"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "retry",
+          "name": "action_retry",
+          "sourceVertexId": "invalid",
+          "targetVertexId": "compose",
+          "properties": {
+            "test": {
+              "actions": [
+                {
+                  "type": "click",
+                  "target": {
+                    "role": "button",
+                    "name": "Reset form"
+                  }
+                }
+              ],
+              "clearInput": true
+            }
+          }
+        },
+        {
+          "id": "again",
+          "name": "action_again",
+          "sourceVertexId": "sent",
+          "targetVertexId": "compose",
+          "properties": {
+            "test": {
+              "actions": [
+                {
+                  "type": "click",
+                  "target": {
+                    "role": "button",
+                    "name": "Write another"
+                  }
+                }
+              ],
+              "clearInput": true
+            }
+          }
+        },
+        {
+          "id": "fuzz",
+          "name": "action_fuzz",
+          "sourceVertexId": "compose",
+          "targetVertexId": "compose",
+          "properties": {
+            "test": {
+              "property": "message-inputs"
+            }
+          }
+        }
+      ],
+      "properties": {
+        "test": {
+          "version": 1,
+          "startUrl": "{{baseUrl}}/feedback.html",
+          "fields": {
+            "subject": {
+              "target": {
+                "role": "textbox",
+                "name": "Subject"
+              },
+              "constraints": {
+                "type": "string",
+                "trim": true,
+                "minLength": 4,
+                "maxLength": 50,
+                "required": true
+              },
+              "error": "Subject must contain 4 to 50 characters."
+            },
+            "message": {
+              "target": {
+                "role": "textbox",
+                "name": "Message"
+              },
+              "constraints": {
+                "type": "string",
+                "trim": true,
+                "minLength": 5,
+                "maxLength": 200,
+                "required": true
+              },
+              "error": "Message must contain 5 to 200 characters."
+            }
+          },
+          "properties": {
+            "message-inputs": {
+              "fields": [
+                "subject",
+                "message"
+              ],
+              "baseline": {
+                "subject": "A small question",
+                "message": "When is the next session?"
+              },
+              "resetEdges": [],
+              "submit": [
+                {
+                  "type": "click",
+                  "target": {
+                    "role": "button",
+                    "name": "Send message"
+                  }
+                }
+              ],
+              "validState": "sent",
+              "invalidState": "invalid",
+              "cases": 8,
+              "casesPerField": 8,
+              "boundaries": true
+            }
+          }
+        }
+      }
+    }
+  ]
+}

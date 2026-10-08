@@ -12,11 +12,18 @@ function positiveInteger(value, name) {
   if (!Number.isSafeInteger(value) || value < 1) throw new Error(`${name} must be a positive safe integer.`);
 }
 
-/** Validate the emitted path against the input model; never silently truncate coverage. */
-export function parsePath(document, stdout, { maxSteps = 100 } = {}) {
+function coverageThreshold(value) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 100) {
+    throw new Error('requiredEdgeCoverage must be a finite number between 0 and 100.');
+  }
+}
+
+/** Validate native path identity/adjacency and the explicitly required coverage. */
+export function parsePath(document, stdout, { maxSteps = 100, requiredEdgeCoverage = 100 } = {}) {
   positiveInteger(maxSteps, 'maxSteps');
+  coverageThreshold(requiredEdgeCoverage);
   if (!Array.isArray(document.models) || document.models.length !== 1) {
-    throw new Error('The demo supports exactly one GraphWalker model.');
+    throw new Error('The framework supports exactly one GraphWalker model.');
   }
   const model = document.models[0];
   const byName = new Map();
@@ -62,7 +69,13 @@ export function parsePath(document, stdout, { maxSteps = 100 } = {}) {
     if (model.id != null && entry.modelId != null && entry.modelId !== model.id) {
       throw new Error(`GraphWalker emitted an unexpected model id: ${entry.modelId}.`);
     }
-    return { ...element };
+    if (entry.data !== undefined && (entry.data === null || (typeof entry.data !== 'string' &&
+      (typeof entry.data !== 'object' || Array.isArray(entry.data))))) {
+      throw new Error(`Invalid GraphWalker data on output line ${index + 1}.`);
+    }
+    // Native verbose data is currently a display string, not a typed variable
+    // object. Preserve it as evidence; do not reinterpret or execute scripts.
+    return { ...element, ...(entry.data === undefined ? {} : { graphData: structuredClone(entry.data) }) };
   });
   if (path[0].id !== start.id) throw new Error(`GraphWalker path must start at ${start.name}.`);
   for (let i = 1; i < path.length; i++) {
@@ -76,7 +89,10 @@ export function parsePath(document, stdout, { maxSteps = 100 } = {}) {
   }
   const visited = new Set(path.filter((element) => element.type === 'edge').map((element) => element.id));
   const missing = model.edges.filter((edge) => !visited.has(edge.id));
-  if (missing.length) throw new Error(`GraphWalker path has incomplete edge coverage; missing: ${missing.map((edge) => edge.name).join(', ')}.`);
+  const edgeCoverage = visited.size / model.edges.length * 100;
+  if (edgeCoverage < requiredEdgeCoverage) {
+    throw new Error(`GraphWalker path has incomplete edge coverage (${edgeCoverage.toFixed(2)}% < required ${requiredEdgeCoverage}%); missing: ${missing.map((edge) => edge.name).join(', ')}.`);
+  }
   // A final edge still needs its destination checked, even if the generator's stop
   // condition fires before emitting that vertex. This is a verification checkpoint,
   // not an additional generated transition.
@@ -88,15 +104,16 @@ export function parsePath(document, stdout, { maxSteps = 100 } = {}) {
 }
 
 /** Generate the actual GraphWalker Rust CLI path with a reproducible nonzero seed. */
-export async function generatePath({ modelPath, seed = 42, maxSteps = 100 }) {
+export async function generatePath({ modelPath, seed = 42, maxSteps = 100, requiredEdgeCoverage = 100 }) {
   positiveInteger(seed, 'seed'); // GraphWalker uses zero to request a random seed.
   positiveInteger(maxSteps, 'maxSteps');
+  coverageThreshold(requiredEdgeCoverage);
   const absoluteModel = resolve(modelPath);
   const document = JSON.parse(await readFile(absoluteModel, 'utf8'));
   const binary = process.env.GRAPHWALKER_BIN || defaultBinary;
   let stdout;
   try {
-    ({ stdout } = await runFile(binary, ['offline', '-g', absoluteModel, '-s', String(seed)], {
+    ({ stdout } = await runFile(binary, ['offline', '-g', absoluteModel, '-s', String(seed), '-o'], {
       timeout: 60_000, maxBuffer: 4 * 1024 * 1024, encoding: 'utf8',
     }));
   } catch (error) {
@@ -104,5 +121,5 @@ export async function generatePath({ modelPath, seed = 42, maxSteps = 100 }) {
     if (error.killed) throw new Error('GraphWalker exceeded the 60-second generation timeout.', { cause: error });
     throw new Error(`GraphWalker failed: ${(error.stderr || error.message).trim()}`, { cause: error });
   }
-  return parsePath(document, stdout, { maxSteps });
+  return parsePath(document, stdout, { maxSteps, requiredEdgeCoverage });
 }

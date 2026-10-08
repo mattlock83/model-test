@@ -1,43 +1,705 @@
 {
   "name": "Fieldnotes booking",
-  "models": [{
-    "id": "booking",
-    "name": "Booking",
-    "generator": "quick_random(edge_coverage(100))",
-    "startElementId": "v_Home",
-    "vertices": [
-      { "id": "v_Home", "name": "v_Home", "properties": {
-        "description": "The workshop landing page with heading Make something by hand and Book a place button.",
-        "expectation": "The landing page visibly offers the printmaking workshop at $45 per person and a Book a place button."
-      } },
-      { "id": "v_Form", "name": "v_Form", "properties": {
-        "description": "A booking form headed Book your workshop with Full name, Email address and Seats fields, a Review booking button, and NO Check your details error alert.",
-        "expectation": "The booking form has Full name, Email address and Seats fields and a Review booking button, with no validation error alert."
-      } },
-      { "id": "v_Error", "name": "v_Error", "properties": {
-        "description": "The Book your workshop form displays a Check your details validation alert containing one or more field errors.",
-        "expectation": "The booking form remains visible with a Check your details alert explaining the invalid full name, email address and seat count. There is no booking confirmation."
-      } },
-      { "id": "v_Review", "name": "v_Review", "properties": {
-        "description": "A Review your booking page shows name, email, seats, an AUD total, and Edit details and Confirm booking buttons.",
-        "expectation": "The booking review shows the submitted name, email and seat count, a total of $45 multiplied by the seat count, and Edit details and Confirm booking buttons."
-      } },
-      { "id": "v_Confirmed", "name": "v_Confirmed", "properties": {
-        "description": "A successful booking page headed You’re on the list with a confirmation message and Start again button.",
-        "expectation": "A successful confirmation headed You’re on the list names the customer, correct number of seats and booking email, and offers Start again."
-      } }
-    ],
-    "edges": [
-      { "id": "e_OpenForm", "name": "e_OpenForm", "sourceVertexId": "v_Home", "targetVertexId": "v_Form" },
-      { "id": "e_ValidateInputs", "name": "e_ValidateInputs", "sourceVertexId": "v_Form", "targetVertexId": "v_Form" },
-      { "id": "e_InvalidBooking", "name": "e_InvalidBooking", "sourceVertexId": "v_Form", "targetVertexId": "v_Error" },
-      { "id": "e_CorrectBooking", "name": "e_CorrectBooking", "sourceVertexId": "v_Error", "targetVertexId": "v_Review" },
-      { "id": "e_ValidBooking", "name": "e_ValidBooking", "sourceVertexId": "v_Form", "targetVertexId": "v_Review" },
-      { "id": "e_EditBooking", "name": "e_EditBooking", "sourceVertexId": "v_Review", "targetVertexId": "v_Form" },
-      { "id": "e_Confirm", "name": "e_Confirm", "sourceVertexId": "v_Review", "targetVertexId": "v_Confirmed" },
-      { "id": "e_StartAgain", "name": "e_StartAgain", "sourceVertexId": "v_Confirmed", "targetVertexId": "v_Home" },
-      { "id": "e_Cancel", "name": "e_Cancel", "sourceVertexId": "v_Form", "targetVertexId": "v_Home" },
-      { "id": "e_CancelError", "name": "e_CancelError", "sourceVertexId": "v_Error", "targetVertexId": "v_Home" }
-    ]
-  }]
+  "models": [
+    {
+      "id": "booking",
+      "name": "Booking",
+      "generator": "quick_random(edge_coverage(100))",
+      "startElementId": "v_Home",
+      "vertices": [
+        {
+          "id": "v_Home",
+          "name": "v_Home",
+          "properties": {
+            "test": {
+              "description": "The workshop landing page with heading Make something by hand and Book a place button.",
+              "expectation": "The landing page visibly offers the printmaking workshop at $45 per person and a Book a place button.",
+              "match": [
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "heading",
+                    "name": "Make something by hand"
+                  }
+                }
+              ],
+              "assertions": [
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "button",
+                    "name": "Book a place"
+                  }
+                },
+                {
+                  "type": "text",
+                  "contains": "$45 per person"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "v_Form",
+          "name": "v_Form",
+          "properties": {
+            "test": {
+              "description": "A booking form headed Book your workshop with Full name, Email address and Seats fields, a Review booking button, and NO Check your details error alert.",
+              "expectation": "The booking form has Full name, Email address and Seats fields and a Review booking button, with no validation error alert.",
+              "match": [
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "heading",
+                    "name": "Book your workshop"
+                  }
+                },
+                {
+                  "type": "absent",
+                  "target": {
+                    "role": "alert"
+                  }
+                }
+              ],
+              "assertions": [
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Full name"
+                  }
+                },
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Email address"
+                  }
+                },
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Seats"
+                  }
+                },
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "button",
+                    "name": "Review booking"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "v_Error",
+          "name": "v_Error",
+          "properties": {
+            "test": {
+              "description": "The Book your workshop form displays a Check your details validation alert containing one or more field errors.",
+              "expectation": "The form remains visible with a Check your details validation alert. No successful booking is shown.",
+              "match": [
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "heading",
+                    "name": "Book your workshop"
+                  }
+                },
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "alert"
+                  }
+                }
+              ],
+              "assertions": [
+                {
+                  "type": "text",
+                  "contains": "Check your details"
+                },
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "button",
+                    "name": "Review booking"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "v_Review",
+          "name": "v_Review",
+          "properties": {
+            "test": {
+              "description": "A Review your booking page shows name, email, seats, an AUD total, and Edit details and Confirm booking buttons.",
+              "expectation": "The review shows customer {{derived.customer}}, email {{derived.email}}, {{input.seats}} seats and total AUD ${{derived.total}}, with Edit details and Confirm booking controls.",
+              "match": [
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "heading",
+                    "name": "Review your booking"
+                  }
+                }
+              ],
+              "assertions": [
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "button",
+                    "name": "Edit details"
+                  }
+                },
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "button",
+                    "name": "Confirm booking"
+                  }
+                },
+                {
+                  "type": "text",
+                  "contains": "{{derived.customer}}"
+                },
+                {
+                  "type": "text",
+                  "contains": "{{derived.email}}"
+                },
+                {
+                  "type": "text",
+                  "contains": "${{derived.total}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "v_Confirmed",
+          "name": "v_Confirmed",
+          "properties": {
+            "test": {
+              "description": "A successful booking page headed You’re on the list with a confirmation message and Start again button.",
+              "expectation": "Successful confirmation names {{derived.customer}}, email {{derived.email}}, and {{input.seats}} seats, with Start again available.",
+              "match": [
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "heading",
+                    "name": "You’re on the list"
+                  }
+                }
+              ],
+              "assertions": [
+                {
+                  "type": "visible",
+                  "target": {
+                    "role": "button",
+                    "name": "Start again"
+                  }
+                },
+                {
+                  "type": "text",
+                  "contains": "{{derived.customer}}"
+                },
+                {
+                  "type": "text",
+                  "contains": "{{derived.email}}"
+                },
+                {
+                  "type": "text",
+                  "contains": "{{input.seats}} seats"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e_OpenForm",
+          "name": "e_OpenForm",
+          "sourceVertexId": "v_Home",
+          "targetVertexId": "v_Form",
+          "properties": {
+            "test": {
+              "actions": [
+                {
+                  "type": "click",
+                  "target": {
+                    "role": "button",
+                    "name": "Book a place"
+                  }
+                }
+              ]
+            }
+          },
+          "requirements": [
+            "OpenForm"
+          ]
+        },
+        {
+          "id": "e_ValidateInputs",
+          "name": "e_ValidateInputs",
+          "sourceVertexId": "v_Form",
+          "targetVertexId": "v_Form",
+          "properties": {
+            "test": {
+              "property": "booking-inputs"
+            }
+          },
+          "requirements": [
+            "ValidateInputs"
+          ]
+        },
+        {
+          "id": "e_InvalidBooking",
+          "name": "e_InvalidBooking",
+          "sourceVertexId": "v_Form",
+          "targetVertexId": "v_Error",
+          "properties": {
+            "test": {
+              "input": {
+                "name": "A",
+                "email": "not-an-email",
+                "seats": "0"
+              },
+              "actions": [
+                {
+                  "type": "fill",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Full name"
+                  },
+                  "value": "{{input.name}}"
+                },
+                {
+                  "type": "fill",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Email address"
+                  },
+                  "value": "{{input.email}}"
+                },
+                {
+                  "type": "fill",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Seats"
+                  },
+                  "value": "{{input.seats}}"
+                },
+                {
+                  "type": "click",
+                  "target": {
+                    "role": "button",
+                    "name": "Review booking"
+                  }
+                }
+              ]
+            }
+          },
+          "requirements": [
+            "InvalidBooking"
+          ]
+        },
+        {
+          "id": "e_CorrectBooking",
+          "name": "e_CorrectBooking",
+          "sourceVertexId": "v_Error",
+          "targetVertexId": "v_Review",
+          "properties": {
+            "test": {
+              "input": {
+                "name": "Ada Lovelace",
+                "email": "ada@example.com",
+                "seats": "2"
+              },
+              "actions": [
+                {
+                  "type": "fill",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Full name"
+                  },
+                  "value": "{{input.name}}"
+                },
+                {
+                  "type": "fill",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Email address"
+                  },
+                  "value": "{{input.email}}"
+                },
+                {
+                  "type": "fill",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Seats"
+                  },
+                  "value": "{{input.seats}}"
+                },
+                {
+                  "type": "click",
+                  "target": {
+                    "role": "button",
+                    "name": "Review booking"
+                  }
+                }
+              ]
+            }
+          },
+          "requirements": [
+            "CorrectBooking"
+          ],
+          "actions": [
+            "hasBooking = true;"
+          ]
+        },
+        {
+          "id": "e_ValidBooking",
+          "name": "e_ValidBooking",
+          "sourceVertexId": "v_Form",
+          "targetVertexId": "v_Review",
+          "properties": {
+            "test": {
+              "input": {
+                "name": "Ada Lovelace",
+                "email": "ada@example.com",
+                "seats": "2"
+              },
+              "actions": [
+                {
+                  "type": "fill",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Full name"
+                  },
+                  "value": "{{input.name}}"
+                },
+                {
+                  "type": "fill",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Email address"
+                  },
+                  "value": "{{input.email}}"
+                },
+                {
+                  "type": "fill",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Seats"
+                  },
+                  "value": "{{input.seats}}"
+                },
+                {
+                  "type": "click",
+                  "target": {
+                    "role": "button",
+                    "name": "Review booking"
+                  }
+                }
+              ]
+            }
+          },
+          "requirements": [
+            "ValidBooking"
+          ],
+          "actions": [
+            "hasBooking = true;"
+          ]
+        },
+        {
+          "id": "e_EditBooking",
+          "name": "e_EditBooking",
+          "sourceVertexId": "v_Review",
+          "targetVertexId": "v_Form",
+          "properties": {
+            "test": {
+              "actions": [
+                {
+                  "type": "click",
+                  "target": {
+                    "role": "button",
+                    "name": "Edit details"
+                  }
+                }
+              ],
+              "assertions": [
+                {
+                  "type": "value",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Full name"
+                  },
+                  "equals": "{{input.name}}"
+                },
+                {
+                  "type": "value",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Email address"
+                  },
+                  "equals": "{{input.email}}"
+                },
+                {
+                  "type": "value",
+                  "target": {
+                    "role": "textbox",
+                    "name": "Seats"
+                  },
+                  "equals": "{{input.seats}}"
+                }
+              ]
+            }
+          },
+          "requirements": [
+            "EditBooking"
+          ]
+        },
+        {
+          "id": "e_Confirm",
+          "name": "e_Confirm",
+          "sourceVertexId": "v_Review",
+          "targetVertexId": "v_Confirmed",
+          "properties": {
+            "test": {
+              "actions": [
+                {
+                  "type": "click",
+                  "target": {
+                    "role": "button",
+                    "name": "Confirm booking"
+                  }
+                }
+              ]
+            }
+          },
+          "requirements": [
+            "Confirm"
+          ],
+          "guard": "hasBooking"
+        },
+        {
+          "id": "e_StartAgain",
+          "name": "e_StartAgain",
+          "sourceVertexId": "v_Confirmed",
+          "targetVertexId": "v_Home",
+          "properties": {
+            "test": {
+              "actions": [
+                {
+                  "type": "click",
+                  "target": {
+                    "role": "button",
+                    "name": "Start again"
+                  }
+                }
+              ],
+              "clearInput": true
+            }
+          },
+          "requirements": [
+            "StartAgain"
+          ],
+          "actions": [
+            "hasBooking = false;"
+          ]
+        },
+        {
+          "id": "e_Cancel",
+          "name": "e_Cancel",
+          "sourceVertexId": "v_Form",
+          "targetVertexId": "v_Home",
+          "properties": {
+            "test": {
+              "actions": [
+                {
+                  "type": "click",
+                  "target": {
+                    "role": "button",
+                    "name": "Back to home"
+                  }
+                }
+              ]
+            }
+          },
+          "requirements": [
+            "Cancel"
+          ]
+        },
+        {
+          "id": "e_CancelError",
+          "name": "e_CancelError",
+          "sourceVertexId": "v_Error",
+          "targetVertexId": "v_Home",
+          "properties": {
+            "test": {
+              "actions": [
+                {
+                  "type": "click",
+                  "target": {
+                    "role": "button",
+                    "name": "Back to home"
+                  }
+                }
+              ]
+            }
+          },
+          "requirements": [
+            "CancelError"
+          ]
+        }
+      ],
+      "properties": {
+        "test": {
+          "version": 1,
+          "startUrl": "{{baseUrl}}/",
+          "demo": {
+            "bugQuery": "bug=seats"
+          },
+          "coverage": {
+            "edges": 100,
+            "vertices": 100
+          },
+          "fields": {
+            "name": {
+              "target": {
+                "role": "textbox",
+                "name": "Full name"
+              },
+              "constraints": {
+                "type": "string",
+                "trim": true,
+                "minLength": 2,
+                "maxLength": 60,
+                "required": true
+              },
+              "generator": {
+                "type": "sample",
+                "values": [
+                  "Ada Lovelace",
+                  "  Ada Lovelace  ",
+                  "",
+                  "A",
+                  "Al",
+                  "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+                  "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+                  "Jo <&> O’Neil"
+                ]
+              },
+              "error": "Full name must be between 2 and 60 characters."
+            },
+            "email": {
+              "target": {
+                "role": "textbox",
+                "name": "Email address"
+              },
+              "constraints": {
+                "type": "email",
+                "trim": true,
+                "required": true
+              },
+              "generator": {
+                "type": "sample",
+                "values": [
+                  "ada@example.com",
+                  "  ada@example.com  ",
+                  "ada+work@example.test",
+                  "",
+                  "missing-at",
+                  "ada@localhost",
+                  "ada @example.com"
+                ]
+              },
+              "error": "Enter a valid email address, such as alex@example.com."
+            },
+            "seats": {
+              "target": {
+                "role": "textbox",
+                "name": "Seats"
+              },
+              "constraints": {
+                "type": "integer",
+                "min": 1,
+                "max": 4,
+                "trim": true,
+                "required": true,
+                "pattern": "[0-9]+"
+              },
+              "generator": {
+                "type": "integer",
+                "min": 0,
+                "max": 6
+              },
+              "error": "Seats must be a whole number from 1 to 4."
+            }
+          },
+          "derived": {
+            "customer": {
+              "trim": {
+                "var": "input.name"
+              }
+            },
+            "email": {
+              "trim": {
+                "var": "input.email"
+              }
+            },
+            "total": {
+              "multiply": [
+                {
+                  "number": {
+                    "var": "input.seats"
+                  }
+                },
+                45
+              ]
+            }
+          },
+          "properties": {
+            "booking-inputs": {
+              "fields": [
+                "name",
+                "email",
+                "seats"
+              ],
+              "baseline": {
+                "name": "Ada Lovelace",
+                "email": "ada@example.com",
+                "seats": "2"
+              },
+              "resetEdges": [
+                "e_OpenForm"
+              ],
+              "submit": [
+                {
+                  "type": "click",
+                  "target": {
+                    "role": "button",
+                    "name": "Review booking"
+                  }
+                }
+              ],
+              "validState": "v_Review",
+              "invalidState": "v_Error",
+              "cases": 12,
+              "casesPerField": 16,
+              "boundaries": true
+            }
+          }
+        }
+      },
+      "actions": [
+        "hasBooking = false;"
+      ]
+    }
+  ]
 }

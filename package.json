@@ -1,21 +1,28 @@
 {
   "name": "model-test",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "GraphWalker + Hegel + OpenAI Decisions + Playwright MCP demo",
-  "engines": { "node": ">=22" },
+  "description": "Model-only browser testing with GraphWalker, Hegel, and decision models",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node src/server.mjs",
     "setup": "node scripts/setup-graphwalker.mjs",
-    "demo": "node --env-file-if-exists=.env src/run.mjs",
-    "demo:offline": "node src/run.mjs --offline",
-    "demo:bug": "node src/run.mjs --offline --bug",
-    "test": "node --test test/*.test.mjs"
+    "demo": "node --env-file-if-exists=.env scripts/demo.mjs --model models/booking.json",
+    "demo:offline": "node scripts/demo.mjs --model models/booking.json --offline",
+    "demo:bug": "node scripts/demo.mjs --model models/booking.json --offline --bug",
+    "test": "node --test test/*.test.mjs",
+    "test:model": "node --env-file-if-exists=.env src/run.mjs",
+    "demo:feedback": "node scripts/demo.mjs --model models/feedback.json --offline"
   },
   "dependencies": {
     "@hegeldev/hegel": "0.4.7",
     "@modelcontextprotocol/sdk": "1.32.1",
     "@playwright/mcp": "0.0.83"
+  },
+  "bin": {
+    "model-test": "src/run.mjs"
   }
 }
