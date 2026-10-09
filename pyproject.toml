@@ -1,0 +1,47 @@
+[project]
+name = "model-test"
+version = "3.1.0"
+description = "Business-model browser testing with GraphWalker, Jev Ultrafast and Hypothesis"
+requires-python = ">=3.12"
+dependencies = [
+  "jev-ultrafast @ git+https://github.com/browser-use/jev-ultrafast.git@1231850a0bf1a0c0341fe408ef1668dbbfdfac46",
+  "hypothesis>=6.140,<7",
+  "python-dotenv>=1,<2",
+]
+
+[project.scripts]
+model-test = "model_test.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["model_test"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"models" = "model_test/data/models"
+"dist" = "model_test/data/dist"
+"graphwalker.lock.json" = "model_test/data/graphwalker.lock.json"
+"docs/model-format.md" = "model_test/data/model-format.md"
+
+[tool.hatch.build.targets.sdist]
+include = ["model_test", "models", "dist", "docs", "tests", "pyproject.toml", "graphwalker.lock.json", "README.md", "run-demo.sh", "uv.lock"]
+
+[tool.hatch.build.targets.sdist.force-include]
+"dist" = "dist"
+
+[dependency-groups]
+dev = ["pytest>=8.4,<10", "ruff>=0.14,<1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

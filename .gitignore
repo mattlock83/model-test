@@ -6,3 +6,11 @@ node_modules/
 artifacts/
 .hegel/
 .DS_Store
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+*.egg-info/
+
+build/

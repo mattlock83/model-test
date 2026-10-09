@@ -1,220 +1,128 @@
 {
-  "name": "Fieldnotes booking",
   "models": [
     {
-      "id": "booking",
-      "name": "Booking",
+      "id": "workshop bookings",
+      "name": "Workshop bookings",
+      "startElementId": "home",
       "generator": "quick_random(edge_coverage(100))",
-      "startElementId": "v_Home",
       "vertices": [
         {
-          "id": "v_Home",
-          "name": "v_Home",
+          "id": "home",
+          "name": "home",
           "properties": {
-            "test": {
-              "description": "The workshop landing page with heading Make something by hand and Book a place button.",
-              "expectation": "The landing page visibly offers the printmaking workshop at $45 per person and a Book a place button.",
-              "match": [
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "heading",
-                    "name": "Make something by hand"
-                  }
-                }
-              ],
-              "assertions": [
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "button",
-                    "name": "Book a place"
-                  }
-                },
-                {
-                  "type": "text",
-                  "contains": "$45 per person"
-                }
+            "business": {
+              "description": "Fieldnotes home page headed Make something by hand, introducing a morning of printmaking with a large art poster.",
+              "rules": [
+                "The visitor can begin a booking.",
+                "The advertised price is AUD 45 per person.",
+                "The main navigation offers Home, Workshops, Our studio and Visit."
               ]
             }
           }
         },
         {
-          "id": "v_Form",
-          "name": "v_Form",
+          "id": "details",
+          "name": "details",
           "properties": {
-            "test": {
-              "description": "A booking form headed Book your workshop with Full name, Email address and Seats fields, a Review booking button, and NO Check your details error alert.",
-              "expectation": "The booking form has Full name, Email address and Seats fields and a Review booking button, with no validation error alert.",
-              "match": [
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "heading",
-                    "name": "Book your workshop"
-                  }
-                },
-                {
-                  "type": "absent",
-                  "target": {
-                    "role": "alert"
-                  }
-                }
-              ],
-              "assertions": [
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Full name"
-                  }
-                },
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Email address"
-                  }
-                },
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Seats"
-                  }
-                },
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "button",
-                    "name": "Review booking"
-                  }
-                }
+            "business": {
+              "description": "A customer-details entry form requests a name, contact email and number of places, with no validation-error explanations.",
+              "rules": [
+                "The customer can supply a name, contact email and number of places.",
+                "The main navigation offers Home, Workshops, Our studio and Visit."
               ]
             }
           }
         },
         {
-          "id": "v_Error",
-          "name": "v_Error",
+          "id": "review",
+          "name": "review",
           "properties": {
-            "test": {
-              "description": "The Book your workshop form displays a Check your details validation alert containing one or more field errors.",
-              "expectation": "The form remains visible with a Check your details validation alert. No successful booking is shown.",
-              "match": [
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "heading",
-                    "name": "Book your workshop"
-                  }
-                },
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "alert"
-                  }
-                }
-              ],
-              "assertions": [
-                {
-                  "type": "text",
-                  "contains": "Check your details"
-                },
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "button",
-                    "name": "Review booking"
-                  }
-                }
+            "business": {
+              "description": "A booking review summary displays the submitted customer details and total cost and invites final confirmation.",
+              "rules": [
+                "The displayed customer name equals the submitted customer name after trimming surrounding spaces.",
+                "The displayed contact email equals the submitted contact email after trimming surrounding spaces.",
+                "The displayed number of places equals the submitted number of places.",
+                "The total in AUD equals the submitted number of places multiplied by 45.",
+                "The customer can revise the details or confirm the booking.",
+                "The current booking is awaiting the customer's final confirmation.",
+                "The main navigation offers Home, Workshops, Our studio and Visit."
               ]
             }
           }
         },
         {
-          "id": "v_Review",
-          "name": "v_Review",
+          "id": "needs_correction",
+          "name": "needs_correction",
           "properties": {
-            "test": {
-              "description": "A Review your booking page shows name, email, seats, an AUD total, and Edit details and Confirm booking buttons.",
-              "expectation": "The review shows customer {{derived.customer}}, email {{derived.email}}, {{input.seats}} seats and total AUD ${{derived.total}}, with Edit details and Confirm booking controls.",
-              "match": [
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "heading",
-                    "name": "Review your booking"
-                  }
-                }
-              ],
-              "assertions": [
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "button",
-                    "name": "Edit details"
-                  }
-                },
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "button",
-                    "name": "Confirm booking"
-                  }
-                },
-                {
-                  "type": "text",
-                  "contains": "{{derived.customer}}"
-                },
-                {
-                  "type": "text",
-                  "contains": "{{derived.email}}"
-                },
-                {
-                  "type": "text",
-                  "contains": "${{derived.total}}"
-                }
+            "business": {
+              "description": "Customer-details entry form accompanied by validation-error explanations following an unsuccessful submission.",
+              "rules": [
+                "A validation error is shown.",
+                "The main navigation offers Home, Workshops, Our studio and Visit."
               ]
             }
           }
         },
         {
-          "id": "v_Confirmed",
-          "name": "v_Confirmed",
+          "id": "confirmed",
+          "name": "confirmed",
           "properties": {
-            "test": {
-              "description": "A successful booking page headed You’re on the list with a confirmation message and Start again button.",
-              "expectation": "Successful confirmation names {{derived.customer}}, email {{derived.email}}, and {{input.seats}} seats, with Start again available.",
-              "match": [
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "heading",
-                    "name": "You’re on the list"
-                  }
-                }
-              ],
-              "assertions": [
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "button",
-                    "name": "Start again"
-                  }
-                },
-                {
-                  "type": "text",
-                  "contains": "{{derived.customer}}"
-                },
-                {
-                  "type": "text",
-                  "contains": "{{derived.email}}"
-                },
-                {
-                  "type": "text",
-                  "contains": "{{input.seats}} seats"
-                }
+            "business": {
+              "description": "Confirmation acknowledgement of a completed workshop reservation, showing the booked places.",
+              "rules": [
+                "The acknowledged customer name equals the submitted customer name after trimming surrounding spaces.",
+                "The acknowledged contact email equals the submitted contact email after trimming surrounding spaces.",
+                "The acknowledged number of places equals the submitted number of places.",
+                "The customer can start another booking.",
+                "The main navigation offers Home, Workshops, Our studio and Visit."
+              ]
+            }
+          }
+        },
+        {
+          "id": "workshops",
+          "name": "workshops",
+          "properties": {
+            "business": {
+              "description": "Workshop catalogue headed Workshops, listing Introduction to printmaking with its schedule, materials, price and booking option.",
+              "rules": [
+                "The printmaking workshop costs AUD 45 per person.",
+                "The class runs on Saturday from 10 am to noon.",
+                "All tools, paper and ink are included.",
+                "The visitor can begin booking the printmaking workshop.",
+                "The main navigation offers Home, Workshops, Our studio and Visit."
+              ]
+            }
+          }
+        },
+        {
+          "id": "studio",
+          "name": "studio",
+          "properties": {
+            "business": {
+              "description": "About the Fieldnotes studio, describing its beginner-friendly teaching, materials and relaxed pace.",
+              "rules": [
+                "Beginners do not need drawing experience.",
+                "The studio provides tools, paper and ink.",
+                "A link to visitor information is available.",
+                "The main navigation offers Home, Workshops, Our studio and Visit."
+              ]
+            }
+          }
+        },
+        {
+          "id": "visit",
+          "name": "visit",
+          "properties": {
+            "business": {
+              "description": "Visitor information with the studio address, workshop arrival time and accessibility details.",
+              "rules": [
+                "The studio address is 12 Paper Lane, Melbourne VIC 3000.",
+                "Visitors are asked to arrive 10 minutes early.",
+                "Step-free entry and an accessible bathroom are available.",
+                "The visitor can browse workshops.",
+                "The main navigation offers Home, Workshops, Our studio and Visit."
               ]
             }
           }
@@ -222,484 +130,440 @@
       ],
       "edges": [
         {
-          "id": "e_OpenForm",
-          "name": "e_OpenForm",
-          "sourceVertexId": "v_Home",
-          "targetVertexId": "v_Form",
+          "id": "begin_booking",
+          "name": "begin_booking",
+          "sourceVertexId": "home",
+          "targetVertexId": "details",
           "properties": {
-            "test": {
-              "actions": [
-                {
-                  "type": "click",
-                  "target": {
-                    "role": "button",
-                    "name": "Book a place"
-                  }
-                }
-              ]
+            "business": {
+              "intent": "Begin reserving places for the printmaking workshop."
             }
-          },
-          "requirements": [
-            "OpenForm"
-          ]
+          }
         },
         {
-          "id": "e_ValidateInputs",
-          "name": "e_ValidateInputs",
-          "sourceVertexId": "v_Form",
-          "targetVertexId": "v_Form",
+          "id": "abandon_booking",
+          "name": "abandon_booking",
+          "sourceVertexId": "details",
+          "targetVertexId": "home",
           "properties": {
-            "test": {
-              "property": "booking-inputs"
+            "business": {
+              "intent": "Abandon this booking and return to the Fieldnotes home page."
             }
-          },
-          "requirements": [
-            "ValidateInputs"
-          ]
+          }
         },
         {
-          "id": "e_InvalidBooking",
-          "name": "e_InvalidBooking",
-          "sourceVertexId": "v_Form",
-          "targetVertexId": "v_Error",
+          "id": "submit_booking",
+          "name": "submit_booking",
+          "sourceVertexId": "details",
+          "targetVertexId": "review",
           "properties": {
-            "test": {
-              "input": {
-                "name": "A",
-                "email": "not-an-email",
-                "seats": "0"
-              },
-              "actions": [
-                {
-                  "type": "fill",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Full name"
-                  },
-                  "value": "{{input.name}}"
-                },
-                {
-                  "type": "fill",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Email address"
-                  },
-                  "value": "{{input.email}}"
-                },
-                {
-                  "type": "fill",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Seats"
-                  },
-                  "value": "{{input.seats}}"
-                },
-                {
-                  "type": "click",
-                  "target": {
-                    "role": "button",
-                    "name": "Review booking"
-                  }
-                }
-              ]
+            "business": {
+              "intent": "Submit the supplied booking details for review. Stop after the first acceptance or rejection.",
+              "data set": "Booking details",
+              "rejected at": "needs_correction"
             }
-          },
-          "requirements": [
-            "InvalidBooking"
-          ]
+          }
         },
         {
-          "id": "e_CorrectBooking",
-          "name": "e_CorrectBooking",
-          "sourceVertexId": "v_Error",
-          "targetVertexId": "v_Review",
+          "id": "submit_invalid_booking",
+          "name": "submit_invalid_booking",
+          "sourceVertexId": "details",
+          "targetVertexId": "needs_correction",
           "properties": {
-            "test": {
-              "input": {
-                "name": "Ada Lovelace",
-                "email": "ada@example.com",
-                "seats": "2"
-              },
-              "actions": [
-                {
-                  "type": "fill",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Full name"
-                  },
-                  "value": "{{input.name}}"
-                },
-                {
-                  "type": "fill",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Email address"
-                  },
-                  "value": "{{input.email}}"
-                },
-                {
-                  "type": "fill",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Seats"
-                  },
-                  "value": "{{input.seats}}"
-                },
-                {
-                  "type": "click",
-                  "target": {
-                    "role": "button",
-                    "name": "Review booking"
-                  }
-                }
-              ]
-            }
-          },
-          "requirements": [
-            "CorrectBooking"
-          ],
-          "actions": [
-            "hasBooking = true;"
-          ]
-        },
-        {
-          "id": "e_ValidBooking",
-          "name": "e_ValidBooking",
-          "sourceVertexId": "v_Form",
-          "targetVertexId": "v_Review",
-          "properties": {
-            "test": {
-              "input": {
-                "name": "Ada Lovelace",
-                "email": "ada@example.com",
-                "seats": "2"
-              },
-              "actions": [
-                {
-                  "type": "fill",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Full name"
-                  },
-                  "value": "{{input.name}}"
-                },
-                {
-                  "type": "fill",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Email address"
-                  },
-                  "value": "{{input.email}}"
-                },
-                {
-                  "type": "fill",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Seats"
-                  },
-                  "value": "{{input.seats}}"
-                },
-                {
-                  "type": "click",
-                  "target": {
-                    "role": "button",
-                    "name": "Review booking"
-                  }
-                }
-              ]
-            }
-          },
-          "requirements": [
-            "ValidBooking"
-          ],
-          "actions": [
-            "hasBooking = true;"
-          ]
-        },
-        {
-          "id": "e_EditBooking",
-          "name": "e_EditBooking",
-          "sourceVertexId": "v_Review",
-          "targetVertexId": "v_Form",
-          "properties": {
-            "test": {
-              "actions": [
-                {
-                  "type": "click",
-                  "target": {
-                    "role": "button",
-                    "name": "Edit details"
-                  }
-                }
-              ],
-              "assertions": [
-                {
-                  "type": "value",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Full name"
-                  },
-                  "equals": "{{input.name}}"
-                },
-                {
-                  "type": "value",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Email address"
-                  },
-                  "equals": "{{input.email}}"
-                },
-                {
-                  "type": "value",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Seats"
-                  },
-                  "equals": "{{input.seats}}"
-                }
-              ]
-            }
-          },
-          "requirements": [
-            "EditBooking"
-          ]
-        },
-        {
-          "id": "e_Confirm",
-          "name": "e_Confirm",
-          "sourceVertexId": "v_Review",
-          "targetVertexId": "v_Confirmed",
-          "properties": {
-            "test": {
-              "actions": [
-                {
-                  "type": "click",
-                  "target": {
-                    "role": "button",
-                    "name": "Confirm booking"
-                  }
-                }
-              ]
-            }
-          },
-          "requirements": [
-            "Confirm"
-          ],
-          "guard": "hasBooking"
-        },
-        {
-          "id": "e_StartAgain",
-          "name": "e_StartAgain",
-          "sourceVertexId": "v_Confirmed",
-          "targetVertexId": "v_Home",
-          "properties": {
-            "test": {
-              "actions": [
-                {
-                  "type": "click",
-                  "target": {
-                    "role": "button",
-                    "name": "Start again"
-                  }
-                }
-              ],
-              "clearInput": true
-            }
-          },
-          "requirements": [
-            "StartAgain"
-          ],
-          "actions": [
-            "hasBooking = false;"
-          ]
-        },
-        {
-          "id": "e_Cancel",
-          "name": "e_Cancel",
-          "sourceVertexId": "v_Form",
-          "targetVertexId": "v_Home",
-          "properties": {
-            "test": {
-              "actions": [
-                {
-                  "type": "click",
-                  "target": {
-                    "role": "button",
-                    "name": "Back to home"
-                  }
-                }
-              ]
-            }
-          },
-          "requirements": [
-            "Cancel"
-          ]
-        },
-        {
-          "id": "e_CancelError",
-          "name": "e_CancelError",
-          "sourceVertexId": "v_Error",
-          "targetVertexId": "v_Home",
-          "properties": {
-            "test": {
-              "actions": [
-                {
-                  "type": "click",
-                  "target": {
-                    "role": "button",
-                    "name": "Back to home"
-                  }
-                }
-              ]
-            }
-          },
-          "requirements": [
-            "CancelError"
-          ]
-        }
-      ],
-      "properties": {
-        "test": {
-          "version": 1,
-          "startUrl": "{{baseUrl}}/",
-          "demo": {
-            "bugQuery": "bug=seats"
-          },
-          "coverage": {
-            "edges": 100,
-            "vertices": 100
-          },
-          "fields": {
-            "name": {
-              "target": {
-                "role": "textbox",
-                "name": "Full name"
-              },
-              "constraints": {
-                "type": "string",
-                "trim": true,
-                "minLength": 2,
-                "maxLength": 60,
-                "required": true
-              },
-              "generator": {
-                "type": "sample",
-                "values": [
-                  "Ada Lovelace",
-                  "  Ada Lovelace  ",
-                  "",
-                  "A",
-                  "Al",
-                  "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
-                  "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
-                  "Jo <&> O’Neil"
-                ]
-              },
-              "error": "Full name must be between 2 and 60 characters."
-            },
-            "email": {
-              "target": {
-                "role": "textbox",
-                "name": "Email address"
-              },
-              "constraints": {
-                "type": "email",
-                "trim": true,
-                "required": true
-              },
-              "generator": {
-                "type": "sample",
-                "values": [
-                  "ada@example.com",
-                  "  ada@example.com  ",
-                  "ada+work@example.test",
-                  "",
-                  "missing-at",
-                  "ada@localhost",
-                  "ada @example.com"
-                ]
-              },
-              "error": "Enter a valid email address, such as alex@example.com."
-            },
-            "seats": {
-              "target": {
-                "role": "textbox",
-                "name": "Seats"
-              },
-              "constraints": {
-                "type": "integer",
-                "min": 1,
-                "max": 4,
-                "trim": true,
-                "required": true,
-                "pattern": "[0-9]+"
-              },
-              "generator": {
-                "type": "integer",
-                "min": 0,
-                "max": 6
-              },
-              "error": "Seats must be a whole number from 1 to 4."
-            }
-          },
-          "derived": {
-            "customer": {
-              "trim": {
-                "var": "input.name"
+            "business": {
+              "intent": "Submit the supplied booking details for review. Stop after the first acceptance or rejection.",
+              "data set": "Booking details",
+              "accepted at": "review",
+              "rejected at": "needs_correction",
+              "example": {
+                "Customer name": "A",
+                "Contact email": "missing-at",
+                "Number of places": 0
               }
-            },
-            "email": {
-              "trim": {
-                "var": "input.email"
-              }
-            },
-            "total": {
-              "multiply": [
-                {
-                  "number": {
-                    "var": "input.seats"
-                  }
-                },
-                45
-              ]
             }
-          },
+          }
+        },
+        {
+          "id": "abandon_rejected_booking",
+          "name": "abandon_rejected_booking",
+          "sourceVertexId": "needs_correction",
+          "targetVertexId": "home",
           "properties": {
-            "booking-inputs": {
-              "fields": [
-                "name",
-                "email",
-                "seats"
-              ],
-              "baseline": {
-                "name": "Ada Lovelace",
-                "email": "ada@example.com",
-                "seats": "2"
-              },
-              "resetEdges": [
-                "e_OpenForm"
-              ],
-              "submit": [
-                {
-                  "type": "click",
-                  "target": {
-                    "role": "button",
-                    "name": "Review booking"
-                  }
-                }
-              ],
-              "validState": "v_Review",
-              "invalidState": "v_Error",
-              "cases": 12,
-              "casesPerField": 16,
-              "boundaries": true
+            "business": {
+              "intent": "Abandon the rejected booking and return to the Fieldnotes home page."
+            }
+          }
+        },
+        {
+          "id": "correct_booking",
+          "name": "correct_booking",
+          "sourceVertexId": "needs_correction",
+          "targetVertexId": "review",
+          "properties": {
+            "business": {
+              "intent": "Replace the rejected details with the supplied booking data and submit it for review.",
+              "data set": "Booking details",
+              "rejected at": "needs_correction"
+            }
+          }
+        },
+        {
+          "id": "revise_booking",
+          "name": "revise_booking",
+          "sourceVertexId": "review",
+          "targetVertexId": "details",
+          "properties": {
+            "business": {
+              "intent": "Return to editing the booking details without confirming it."
+            }
+          }
+        },
+        {
+          "id": "confirm_booking",
+          "name": "confirm_booking",
+          "sourceVertexId": "review",
+          "targetVertexId": "confirmed",
+          "properties": {
+            "business": {
+              "intent": "Confirm the booking currently under review."
+            }
+          }
+        },
+        {
+          "id": "start_again",
+          "name": "start_again",
+          "sourceVertexId": "confirmed",
+          "targetVertexId": "home",
+          "properties": {
+            "business": {
+              "intent": "Return to the Fieldnotes home page, ready to begin another reservation."
+            }
+          }
+        },
+        {
+          "id": "home_to_workshops",
+          "name": "home_to_workshops",
+          "sourceVertexId": "home",
+          "targetVertexId": "workshops",
+          "properties": {
+            "business": {
+              "intent": "Browse the workshop catalogue and its class information."
+            }
+          }
+        },
+        {
+          "id": "home_to_studio",
+          "name": "home_to_studio",
+          "sourceVertexId": "home",
+          "targetVertexId": "studio",
+          "properties": {
+            "business": {
+              "intent": "Read about the Fieldnotes studio, its teaching approach and materials."
+            }
+          }
+        },
+        {
+          "id": "home_to_visit",
+          "name": "home_to_visit",
+          "sourceVertexId": "home",
+          "targetVertexId": "visit",
+          "properties": {
+            "business": {
+              "intent": "Find the studio address, arrival guidance and accessibility information."
+            }
+          }
+        },
+        {
+          "id": "details_to_workshops",
+          "name": "details_to_workshops",
+          "sourceVertexId": "details",
+          "targetVertexId": "workshops",
+          "properties": {
+            "business": {
+              "intent": "Browse the workshop catalogue and its class information."
+            }
+          }
+        },
+        {
+          "id": "details_to_studio",
+          "name": "details_to_studio",
+          "sourceVertexId": "details",
+          "targetVertexId": "studio",
+          "properties": {
+            "business": {
+              "intent": "Read about the Fieldnotes studio, its teaching approach and materials."
+            }
+          }
+        },
+        {
+          "id": "details_to_visit",
+          "name": "details_to_visit",
+          "sourceVertexId": "details",
+          "targetVertexId": "visit",
+          "properties": {
+            "business": {
+              "intent": "Find the studio address, arrival guidance and accessibility information."
+            }
+          }
+        },
+        {
+          "id": "review_to_home",
+          "name": "review_to_home",
+          "sourceVertexId": "review",
+          "targetVertexId": "home",
+          "properties": {
+            "business": {
+              "intent": "Return to the Fieldnotes home page and its introduction to making something by hand."
+            }
+          }
+        },
+        {
+          "id": "review_to_workshops",
+          "name": "review_to_workshops",
+          "sourceVertexId": "review",
+          "targetVertexId": "workshops",
+          "properties": {
+            "business": {
+              "intent": "Browse the workshop catalogue and its class information."
+            }
+          }
+        },
+        {
+          "id": "review_to_studio",
+          "name": "review_to_studio",
+          "sourceVertexId": "review",
+          "targetVertexId": "studio",
+          "properties": {
+            "business": {
+              "intent": "Read about the Fieldnotes studio, its teaching approach and materials."
+            }
+          }
+        },
+        {
+          "id": "review_to_visit",
+          "name": "review_to_visit",
+          "sourceVertexId": "review",
+          "targetVertexId": "visit",
+          "properties": {
+            "business": {
+              "intent": "Find the studio address, arrival guidance and accessibility information."
+            }
+          }
+        },
+        {
+          "id": "needs_correction_to_workshops",
+          "name": "needs_correction_to_workshops",
+          "sourceVertexId": "needs_correction",
+          "targetVertexId": "workshops",
+          "properties": {
+            "business": {
+              "intent": "Browse the workshop catalogue and its class information."
+            }
+          }
+        },
+        {
+          "id": "needs_correction_to_studio",
+          "name": "needs_correction_to_studio",
+          "sourceVertexId": "needs_correction",
+          "targetVertexId": "studio",
+          "properties": {
+            "business": {
+              "intent": "Read about the Fieldnotes studio, its teaching approach and materials."
+            }
+          }
+        },
+        {
+          "id": "needs_correction_to_visit",
+          "name": "needs_correction_to_visit",
+          "sourceVertexId": "needs_correction",
+          "targetVertexId": "visit",
+          "properties": {
+            "business": {
+              "intent": "Find the studio address, arrival guidance and accessibility information."
+            }
+          }
+        },
+        {
+          "id": "confirmed_to_workshops",
+          "name": "confirmed_to_workshops",
+          "sourceVertexId": "confirmed",
+          "targetVertexId": "workshops",
+          "properties": {
+            "business": {
+              "intent": "Browse the workshop catalogue and its class information."
+            }
+          }
+        },
+        {
+          "id": "confirmed_to_studio",
+          "name": "confirmed_to_studio",
+          "sourceVertexId": "confirmed",
+          "targetVertexId": "studio",
+          "properties": {
+            "business": {
+              "intent": "Read about the Fieldnotes studio, its teaching approach and materials."
+            }
+          }
+        },
+        {
+          "id": "confirmed_to_visit",
+          "name": "confirmed_to_visit",
+          "sourceVertexId": "confirmed",
+          "targetVertexId": "visit",
+          "properties": {
+            "business": {
+              "intent": "Find the studio address, arrival guidance and accessibility information."
+            }
+          }
+        },
+        {
+          "id": "workshops_to_home",
+          "name": "workshops_to_home",
+          "sourceVertexId": "workshops",
+          "targetVertexId": "home",
+          "properties": {
+            "business": {
+              "intent": "Return to the Fieldnotes home page and its introduction to making something by hand."
+            }
+          }
+        },
+        {
+          "id": "workshops_to_studio",
+          "name": "workshops_to_studio",
+          "sourceVertexId": "workshops",
+          "targetVertexId": "studio",
+          "properties": {
+            "business": {
+              "intent": "Read about the Fieldnotes studio, its teaching approach and materials."
+            }
+          }
+        },
+        {
+          "id": "workshops_to_visit",
+          "name": "workshops_to_visit",
+          "sourceVertexId": "workshops",
+          "targetVertexId": "visit",
+          "properties": {
+            "business": {
+              "intent": "Find the studio address, arrival guidance and accessibility information."
+            }
+          }
+        },
+        {
+          "id": "studio_to_home",
+          "name": "studio_to_home",
+          "sourceVertexId": "studio",
+          "targetVertexId": "home",
+          "properties": {
+            "business": {
+              "intent": "Return to the Fieldnotes home page and its introduction to making something by hand."
+            }
+          }
+        },
+        {
+          "id": "studio_to_workshops",
+          "name": "studio_to_workshops",
+          "sourceVertexId": "studio",
+          "targetVertexId": "workshops",
+          "properties": {
+            "business": {
+              "intent": "Browse the workshop catalogue and its class information."
+            }
+          }
+        },
+        {
+          "id": "studio_to_visit",
+          "name": "studio_to_visit",
+          "sourceVertexId": "studio",
+          "targetVertexId": "visit",
+          "properties": {
+            "business": {
+              "intent": "Find the studio address, arrival guidance and accessibility information."
+            }
+          }
+        },
+        {
+          "id": "visit_to_home",
+          "name": "visit_to_home",
+          "sourceVertexId": "visit",
+          "targetVertexId": "home",
+          "properties": {
+            "business": {
+              "intent": "Return to the Fieldnotes home page and its introduction to making something by hand."
+            }
+          }
+        },
+        {
+          "id": "visit_to_workshops",
+          "name": "visit_to_workshops",
+          "sourceVertexId": "visit",
+          "targetVertexId": "workshops",
+          "properties": {
+            "business": {
+              "intent": "Browse the workshop catalogue and its class information."
+            }
+          }
+        },
+        {
+          "id": "visit_to_studio",
+          "name": "visit_to_studio",
+          "sourceVertexId": "visit",
+          "targetVertexId": "studio",
+          "properties": {
+            "business": {
+              "intent": "Read about the Fieldnotes studio, its teaching approach and materials."
+            }
+          }
+        },
+        {
+          "id": "book_from_workshops",
+          "name": "book_from_workshops",
+          "sourceVertexId": "workshops",
+          "targetVertexId": "details",
+          "properties": {
+            "business": {
+              "intent": "Begin reserving places for the printmaking workshop from the catalogue."
             }
           }
         }
-      },
-      "actions": [
-        "hasBooking = false;"
-      ]
+      ],
+      "properties": {
+        "business": {
+          "version": 3,
+          "purpose": "Explore the Fieldnotes workshop catalogue, studio and visitor information, then reserve places for a printmaking workshop.",
+          "entry path": "/",
+          "rules": [
+            "Each place costs AUD 45.",
+            "Invalid details must be rejected with useful explanations."
+          ],
+          "data sets": {
+            "Booking details": {
+              "Customer name": {
+                "description": "The name of the person attending the workshop",
+                "type": "text",
+                "required": true,
+                "minimum length": 2,
+                "maximum length": 60,
+                "example": "Ada Lovelace"
+              },
+              "Contact email": {
+                "description": "The email address for the booking",
+                "type": "email",
+                "required": true,
+                "example": "ada@example.com"
+              },
+              "Number of places": {
+                "description": "How many people will attend the workshop",
+                "type": "whole number",
+                "required": true,
+                "minimum": 1,
+                "maximum": 4,
+                "example": 2
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

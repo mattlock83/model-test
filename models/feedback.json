@@ -1,111 +1,45 @@
 {
   "models": [
     {
-      "id": "feedback",
-      "name": "Feedback",
+      "id": "studio enquiries",
+      "name": "Studio enquiries",
       "startElementId": "compose",
       "generator": "quick_random(edge_coverage(100))",
       "vertices": [
         {
           "id": "compose",
-          "name": "state_compose",
+          "name": "compose",
           "properties": {
-            "test": {
-              "description": "Send a message without validation alert",
-              "expectation": "Send a message is shown with the appropriate form or confirmation.",
-              "match": [
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "heading",
-                    "name": "Send a message"
-                  }
-                },
-                {
-                  "type": "absent",
-                  "target": {
-                    "role": "alert"
-                  }
-                }
-              ],
-              "assertions": [
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "button",
-                    "name": "Send message"
-                  }
-                }
+            "business": {
+              "description": "A visitor is composing an enquiry with no validation problems displayed.",
+              "rules": [
+                "A visitor can provide an enquiry subject and message."
               ]
             }
           }
         },
         {
-          "id": "invalid",
-          "name": "state_invalid",
+          "id": "needs_correction",
+          "name": "needs_correction",
           "properties": {
-            "test": {
-              "description": "Send a message with validation alert",
-              "expectation": "Send a message is shown with the appropriate form or confirmation.",
-              "match": [
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "heading",
-                    "name": "Send a message"
-                  }
-                },
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "alert"
-                  }
-                }
-              ],
-              "assertions": [
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "button",
-                    "name": "Send message"
-                  }
-                },
-                {
-                  "type": "text",
-                  "contains": "Check your message"
-                }
+            "business": {
+              "description": "An enquiry submission has been rejected and validation problems are displayed.",
+              "rules": [
+                "The visitor can correct the enquiry.",
+                "No successful receipt is claimed."
               ]
             }
           }
         },
         {
-          "id": "sent",
-          "name": "state_sent",
+          "id": "received",
+          "name": "received",
           "properties": {
-            "test": {
-              "description": "Message received with submitted subject and Write another button",
-              "expectation": "Message received is shown with the appropriate form or confirmation.",
-              "match": [
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "heading",
-                    "name": "Message received"
-                  }
-                }
-              ],
-              "assertions": [
-                {
-                  "type": "visible",
-                  "target": {
-                    "role": "button",
-                    "name": "Write another"
-                  }
-                },
-                {
-                  "type": "text",
-                  "contains": "{{input.subject}}"
-                }
+            "business": {
+              "description": "The studio acknowledges receiving the enquiry.",
+              "rules": [
+                "The acknowledgement refers to the submitted subject.",
+                "The visitor can begin another enquiry."
               ]
             }
           }
@@ -113,194 +47,88 @@
       ],
       "edges": [
         {
-          "id": "send",
-          "name": "action_send",
+          "id": "send_enquiry",
+          "name": "send_enquiry",
           "sourceVertexId": "compose",
-          "targetVertexId": "sent",
+          "targetVertexId": "received",
           "properties": {
-            "test": {
-              "input": {
-                "subject": "A small question",
-                "message": "When is the next session?"
-              },
-              "actions": [
-                {
-                  "type": "fill",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Subject"
-                  },
-                  "value": "{{input.subject}}"
-                },
-                {
-                  "type": "fill",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Message"
-                  },
-                  "value": "{{input.message}}"
-                },
-                {
-                  "type": "click",
-                  "target": {
-                    "role": "button",
-                    "name": "Send message"
-                  }
-                }
-              ]
+            "business": {
+              "intent": "Send the supplied enquiry to the studio. Stop after the first acceptance or rejection.",
+              "data set": "Enquiry",
+              "rejected at": "needs_correction"
             }
           }
         },
         {
-          "id": "bad",
-          "name": "action_bad",
+          "id": "send_incomplete_enquiry",
+          "name": "send_incomplete_enquiry",
           "sourceVertexId": "compose",
-          "targetVertexId": "invalid",
+          "targetVertexId": "needs_correction",
           "properties": {
-            "test": {
-              "input": {
-                "subject": "x",
-                "message": ""
-              },
-              "actions": [
-                {
-                  "type": "fill",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Subject"
-                  },
-                  "value": "{{input.subject}}"
-                },
-                {
-                  "type": "fill",
-                  "target": {
-                    "role": "textbox",
-                    "name": "Message"
-                  },
-                  "value": "{{input.message}}"
-                },
-                {
-                  "type": "click",
-                  "target": {
-                    "role": "button",
-                    "name": "Send message"
-                  }
-                }
-              ]
+            "business": {
+              "intent": "Send the supplied enquiry to the studio. Stop after the first acceptance or rejection.",
+              "data set": "Enquiry",
+              "accepted at": "received",
+              "rejected at": "needs_correction",
+              "example": {
+                "Enquiry subject": "x",
+                "Enquiry message": ""
+              }
             }
           }
         },
         {
-          "id": "retry",
-          "name": "action_retry",
-          "sourceVertexId": "invalid",
+          "id": "restart_rejected_enquiry",
+          "name": "restart_rejected_enquiry",
+          "sourceVertexId": "needs_correction",
           "targetVertexId": "compose",
           "properties": {
-            "test": {
-              "actions": [
-                {
-                  "type": "click",
-                  "target": {
-                    "role": "button",
-                    "name": "Reset form"
-                  }
-                }
-              ],
-              "clearInput": true
+            "business": {
+              "intent": "Discard the rejected enquiry and start with an empty enquiry."
             }
           }
         },
         {
-          "id": "again",
-          "name": "action_again",
-          "sourceVertexId": "sent",
+          "id": "another_enquiry",
+          "name": "another_enquiry",
+          "sourceVertexId": "received",
           "targetVertexId": "compose",
           "properties": {
-            "test": {
-              "actions": [
-                {
-                  "type": "click",
-                  "target": {
-                    "role": "button",
-                    "name": "Write another"
-                  }
-                }
-              ],
-              "clearInput": true
-            }
-          }
-        },
-        {
-          "id": "fuzz",
-          "name": "action_fuzz",
-          "sourceVertexId": "compose",
-          "targetVertexId": "compose",
-          "properties": {
-            "test": {
-              "property": "message-inputs"
+            "business": {
+              "intent": "Begin a new enquiry."
             }
           }
         }
       ],
       "properties": {
-        "test": {
-          "version": 1,
-          "startUrl": "{{baseUrl}}/feedback.html",
-          "fields": {
-            "subject": {
-              "target": {
-                "role": "textbox",
-                "name": "Subject"
+        "business": {
+          "version": 3,
+          "purpose": "Visitors can send enquiries to the studio.",
+          "entry path": "/feedback.html",
+          "rules": [
+            "Visitors can send enquiries to the studio.",
+            "An enquiry subject must contain 4 to 50 characters.",
+            "An enquiry message must contain 5 to 200 characters.",
+            "Invalid enquiries are rejected with useful explanations."
+          ],
+          "data sets": {
+            "Enquiry": {
+              "Enquiry subject": {
+                "description": "The topic the visitor is contacting the studio about",
+                "type": "text",
+                "required": true,
+                "minimum length": 4,
+                "maximum length": 50,
+                "example": "A small question"
               },
-              "constraints": {
-                "type": "string",
-                "trim": true,
-                "minLength": 4,
-                "maxLength": 50,
-                "required": true
-              },
-              "error": "Subject must contain 4 to 50 characters."
-            },
-            "message": {
-              "target": {
-                "role": "textbox",
-                "name": "Message"
-              },
-              "constraints": {
-                "type": "string",
-                "trim": true,
-                "minLength": 5,
-                "maxLength": 200,
-                "required": true
-              },
-              "error": "Message must contain 5 to 200 characters."
-            }
-          },
-          "properties": {
-            "message-inputs": {
-              "fields": [
-                "subject",
-                "message"
-              ],
-              "baseline": {
-                "subject": "A small question",
-                "message": "When is the next session?"
-              },
-              "resetEdges": [],
-              "submit": [
-                {
-                  "type": "click",
-                  "target": {
-                    "role": "button",
-                    "name": "Send message"
-                  }
-                }
-              ],
-              "validState": "sent",
-              "invalidState": "invalid",
-              "cases": 8,
-              "casesPerField": 8,
-              "boundaries": true
+              "Enquiry message": {
+                "description": "The content of the visitor enquiry",
+                "type": "text",
+                "required": true,
+                "minimum length": 5,
+                "maximum length": 200,
+                "example": "When is the next session?"
+              }
             }
           }
         }

@@ -2,6 +2,16 @@ const app = document.querySelector('#app');
 const allowExtraSeat = new URLSearchParams(window.location.search).get('bug') === 'seats';
 let booking = { name: '', email: '', seats: '1' };
 
+// Keep the opt-in defect enabled when a journey navigates between documents.
+const siteLink = (path) => {
+  const url = new URL(path, window.location.origin);
+  if (allowExtraSeat) url.searchParams.set('bug', 'seats');
+  return url.pathname + url.search + url.hash;
+};
+document.querySelectorAll('.site-header a').forEach((link) => {
+  link.href = siteLink(link.getAttribute('href'));
+});
+
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 })[character]);
@@ -50,7 +60,16 @@ function steps(active) {
 function show(markup, state) {
   app.innerHTML = markup;
   app.dataset.state = state;
-  document.title = `Fieldnotes — ${state === 'home' ? 'A little room to make' : 'Workshop booking'}`;
+  const titles = { home: 'A little room to make', workshops: 'Workshops', studio: 'Our studio', visit: 'Visit us' };
+  document.title = `Fieldnotes — ${titles[state] || 'Workshop booking'}`;
+  document.querySelectorAll('.site-nav a').forEach((link) => {
+    if (link.dataset.page === state) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  });
+  if (state === 'home' && window.location.hash) {
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
+  window.scrollTo(0, 0);
 }
 
 function home() {
@@ -178,4 +197,54 @@ function confirmed() {
   });
 }
 
-home();
+function workshops() {
+  show(`<section class="info-page" aria-labelledby="page-title">
+    <p class="eyebrow">MAKE A MORNING OF IT</p>
+    <h1 id="page-title">Workshops</h1>
+    <p class="intro page-intro">Small classes, patient guidance, and something made by you. Every session is designed for beginners.</p>
+    <article class="workshop-listing">
+      <div class="listing-art">${artwork()}</div>
+      <div class="listing-copy"><p class="eyebrow">THE SATURDAY SESSIONS · NO. 01</p>
+        <h2>Introduction to printmaking</h2>
+        <p>Learn to carve a simple linocut, roll your first layer of ink, and print a small edition to take home.</p>
+        <dl class="page-facts"><div><dt>When</dt><dd>Saturday, 10 am–12 pm</dd></div>
+          <div><dt>Price</dt><dd>AUD 45 per person</dd></div>
+          <div><dt>Included</dt><dd>All tools, paper and ink</dd></div>
+          <div><dt>Group size</dt><dd>Book 1–4 places</dd></div></dl>
+        <a class="button" href="${siteLink('/#book')}">Book the printmaking workshop <span aria-hidden="true">↗</span></a>
+      </div>
+    </article>
+    <div class="page-callout"><p>Curious about where we make?</p><a href="${siteLink('/studio.html')}">Explore our studio <span aria-hidden="true">→</span></a></div>
+  </section>`, 'workshops');
+}
+
+function studio() {
+  show(`<section class="info-page" aria-labelledby="page-title">
+    <p class="eyebrow">A LITTLE ROOM TO MAKE</p>
+    <h1 id="page-title">Our studio</h1>
+    <p class="intro page-intro">A shared table in Melbourne. A shelf full of ink. Space to try something you haven’t tried before.</p>
+    <div class="info-grid">
+      <article class="info-card"><span class="card-number">01 / THE PEOPLE</span><h2>Beginners belong here.</h2><p>No drawing experience is needed. Our tutors guide you through each step, from your first sketch to the final print.</p></article>
+      <article class="info-card"><span class="card-number">02 / THE MATERIALS</span><h2>Everything is ready.</h2><p>We provide the carving tools, paper and ink. Just bring your curiosity and clothes you don’t mind getting a little inky.</p></article>
+      <article class="info-card"><span class="card-number">03 / THE PACE</span><h2>Make time to make.</h2><p>Our Saturday sessions run from 10 am to noon. Small groups leave room for questions, conversation and a second attempt.</p></article>
+    </div>
+    <div class="page-callout"><p>Find your way to the shared table.</p><a class="button button-secondary" href="${siteLink('/visit.html')}">Plan your visit <span aria-hidden="true">→</span></a></div>
+  </section>`, 'studio');
+}
+
+function visit() {
+  show(`<section class="info-page" aria-labelledby="page-title">
+    <p class="eyebrow">WE’LL SAVE YOU A SEAT</p>
+    <h1 id="page-title">Visit us</h1>
+    <p class="intro page-intro">A quiet corner for a colourful Saturday. Here’s what to know before your workshop.</p>
+    <div class="visit-grid">
+      <article class="visit-card"><h2>Fieldnotes, Melbourne</h2><p class="studio-address">12 Paper Lane<br>Melbourne VIC 3000</p><p class="field-help">Fictional address for this demo studio.</p><dl class="page-facts"><div><dt>Workshop hours</dt><dd>Saturday, 10 am–12 pm</dd></div><div><dt>Arrival</dt><dd>Please arrive 10 minutes early</dd></div><div><dt>Access</dt><dd>Step-free entry and an accessible bathroom</dd></div></dl></article>
+      <div class="visit-notes"><h2>A few useful things.</h2><p><strong>Bring yourself.</strong> All workshop materials are included. Wear clothes that can handle a little ink.</p><p><strong>Come together.</strong> A single booking can include up to four people.</p><p><strong>Start with a session.</strong> Choose your workshop before reserving a place.</p><a class="button" href="${siteLink('/workshops.html')}">Browse workshops <span aria-hidden="true">→</span></a></div>
+    </div>
+  </section>`, 'visit');
+}
+
+const pages = { '/workshops.html': workshops, '/studio.html': studio, '/visit.html': visit };
+if (pages[window.location.pathname]) pages[window.location.pathname]();
+else if (window.location.hash === '#book') form();
+else home();
