@@ -154,6 +154,20 @@ The booking demo now has **Home, Workshops, Our studio and Visit** pages with a 
 
 The booking demo's `--bug` switch deliberately permits five places although the model permits at most four. Its intended result is `FAIL` when Jev successfully navigates and verifies that case. The switch persists through the new menu links. A live run with `--generator new_york_street_sweeper --cases 1` passed all 35 journeys, all 8 states and 66 input attempts using 194 Jev calls at the default 0.85 confidence threshold. Both property campaigns completed and both global requirements were verified. This is one measured run; provider judgments and future runs can vary. Framework unit tests use mocked remote responses. Your key and an adequate call budget are required for live testing.
 
+## Larger example: Trailhead
+
+The [Trailhead example](examples/trailhead/README.md) adds **20 states, 148 journeys, three data sets and seven property campaigns**, including trip comparisons, equipment, policies, member profiles, bookings and full refunds. Its optional [hooks](examples/trailhead/hooks.py) reset a synthetic backend, verify inventory and refund transactions, and operate a bespoke departure-pickup list through its real widget events. Widget selectors remain outside the [business model](models/trailhead.json).
+
+Start with its short predefined scenario in visible Chrome:
+
+```bash
+./run-demo.sh --site trailhead --hooks examples/trailhead/hooks.py \
+  --generator predefined_path --edge-coverage 0 --state-coverage 0 \
+  --input-mode none --max-steps 1000 --max-calls 250
+```
+
+This visits 14 journeys and 14 states, including explicit invalid examples and both backend hook scenarios. For full coverage, use `--generator new_york_street_sweeper --edge-coverage 100 --state-coverage 100 --max-steps 1000 --max-calls 2500`; enable property campaigns separately with `--input-mode generated` or `all`. The example guide covers budgets, weighted exploration, targeted A*, chained routes, and injected inventory/refund defects.
+
 ## macOS Chrome profile permission error
 
 If Browser Harness reports `Operation not permitted` for Chrome's `DevToolsActivePort`, launch a separate visible Chrome with a dedicated profile and connect by URL. This uses Browser Harness's [documented isolated-profile connection](https://github.com/browser-use/browser-harness/blob/main/skills/browser-harness/references/install.md).

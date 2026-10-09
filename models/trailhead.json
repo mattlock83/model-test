@@ -1,0 +1,2352 @@
+{
+  "models": [
+    {
+      "id": "trailhead",
+      "name": "Trailhead adventures and member services",
+      "startElementId": "home",
+      "generator": "new_york_street_sweeper()",
+      "predefinedPathEdgeIds": [
+        "home_plan_trip",
+        "choose_marina_pickup",
+        "booking_pickup_submit_invalid",
+        "booking_error_submit_valid",
+        "confirm_booking",
+        "request_cancellation",
+        "cancellation_details_submit_invalid",
+        "cancellation_error_submit_valid",
+        "confirm_cancellation",
+        "cancellation_done_to_account",
+        "account_edit_profile",
+        "profile_edit_save_invalid",
+        "profile_error_save_valid",
+        "profile_saved_to_home"
+      ],
+      "vertices": [
+        {
+          "id": "home",
+          "name": "home",
+          "requirements": [
+            "TH-01"
+          ],
+          "properties": {
+            "business": {
+              "description": "Trailhead home page headed Take the scenic route, introducing guided outdoor adventures.",
+              "rules": [
+                "The visitor can browse adventures or begin planning a trip.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "catalogue",
+          "name": "catalogue",
+          "requirements": [
+            "TH-02"
+          ],
+          "properties": {
+            "business": {
+              "description": "Adventure catalogue headed Find your next adventure, offering Ridge walk and River paddle.",
+              "rules": [
+                "Ridge walk is advertised at AUD 80 per traveller.",
+                "River paddle is advertised at AUD 120 per traveller.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "ridge",
+          "name": "ridge",
+          "requirements": [
+            "TH-03"
+          ],
+          "properties": {
+            "business": {
+              "description": "Ridge walk information page headed Ridge walk: above it all.",
+              "rules": [
+                "The walk lasts four hours.",
+                "Walking poles and a shared picnic are included.",
+                "The visitor can begin planning an adventure.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "river",
+          "name": "river",
+          "requirements": [
+            "TH-04"
+          ],
+          "properties": {
+            "business": {
+              "description": "River paddle information page headed River paddle: go with the flow.",
+              "rules": [
+                "The paddle lasts three hours.",
+                "Kayak, paddle and life jacket are included.",
+                "The visitor can begin planning an adventure.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "equipment",
+          "name": "equipment",
+          "requirements": [
+            "TH-05"
+          ],
+          "properties": {
+            "business": {
+              "description": "Equipment guide headed Pack light. We have the rest.",
+              "rules": [
+                "Walking poles are included for Ridge walk.",
+                "Kayak, paddle and life jacket are included for River paddle.",
+                "The visitor can open information about either adventure.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "policies",
+          "name": "policies",
+          "requirements": [
+            "TH-06"
+          ],
+          "properties": {
+            "business": {
+              "description": "Booking policy page headed Clear plans. Fair policies.",
+              "rules": [
+                "Reviewing an adventure does not reserve places.",
+                "Final cancellation gives a full refund including the conservation gift.",
+                "Each booking receives one refund only.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "help",
+          "name": "help",
+          "requirements": [
+            "TH-07"
+          ],
+          "properties": {
+            "business": {
+              "description": "Help page headed A little help before you go, with contact and trip guidance.",
+              "rules": [
+                "The contact address is hello@trailhead.example.test.",
+                "The visitor can open the equipment guide or refund policy.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "account",
+          "name": "account",
+          "requirements": [
+            "TH-08"
+          ],
+          "properties": {
+            "business": {
+              "description": "Member account page headed Your Trailhead account, displaying stored contact details and preferences.",
+              "rules": [
+                "The member can begin editing their profile.",
+                "Supported update preferences are described as Email, SMS and None.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "booking_details",
+          "name": "booking_details",
+          "requirements": [
+            "TH-09"
+          ],
+          "properties": {
+            "business": {
+              "description": "Adventure planning form headed Plan your adventure, with City visitor centre selected as departure pickup and no validation errors.",
+              "rules": [
+                "The selected departure pickup is City visitor centre.",
+                "A lead traveller name entry field is available.",
+                "A contact email entry field is available.",
+                "A party size entry field is available.",
+                "An adventure choice entry field is available.",
+                "A conservation gift entry field is available.",
+                "The traveller can choose a different departure pickup point.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "booking_pickup",
+          "name": "booking_pickup",
+          "requirements": [
+            "TH-10"
+          ],
+          "properties": {
+            "business": {
+              "description": "Adventure planning form headed Plan your adventure, with Marina pier selected as departure pickup and no validation errors.",
+              "rules": [
+                "The selected departure pickup is Marina pier.",
+                "A lead traveller name entry field is available.",
+                "A contact email entry field is available.",
+                "A party size entry field is available.",
+                "An adventure choice entry field is available.",
+                "A conservation gift entry field is available.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "booking_error",
+          "name": "booking_error",
+          "requirements": [
+            "TH-11"
+          ],
+          "properties": {
+            "business": {
+              "description": "Adventure entry form headed Booking details need attention, displaying field validation explanations.",
+              "rules": [
+                "A booking validation error is visible.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "booking_review",
+          "name": "booking_review",
+          "requirements": [
+            "TH-12"
+          ],
+          "properties": {
+            "business": {
+              "description": "Draft adventure summary headed Review your adventure, awaiting final confirmation.",
+              "rules": [
+                "The displayed traveller name equals the submitted traveller name after trimming surrounding spaces.",
+                "The displayed contact email equals the submitted contact email after trimming surrounding spaces.",
+                "The displayed party size equals the submitted party size.",
+                "The displayed adventure equals the submitted adventure.",
+                "The displayed conservation contribution equals the submitted conservation contribution as a numeric amount.",
+                "The displayed unit price is AUD 80 for Ridge walk or AUD 120 for River paddle.",
+                "The trip subtotal equals the submitted party size multiplied by the displayed unit price.",
+                "The conservation gift amount equals the submitted conservation contribution rounded to the nearest cent.",
+                "The party total equals the displayed trip subtotal plus the displayed conservation gift amount.",
+                "The review is explicitly a draft with no places reserved.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "booking_confirmed",
+          "name": "booking_confirmed",
+          "requirements": [
+            "TH-13"
+          ],
+          "properties": {
+            "business": {
+              "description": "Completed adventure confirmation headed Adventure booked, showing a booking reference and reserved places.",
+              "rules": [
+                "A booking reference is displayed.",
+                "The booking is explicitly confirmed with places reserved.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "profile_edit",
+          "name": "profile_edit",
+          "requirements": [
+            "TH-14"
+          ],
+          "properties": {
+            "business": {
+              "description": "Member profile entry form headed Edit your member profile, without validation errors.",
+              "rules": [
+                "A display name entry field is available.",
+                "A member email entry field is available.",
+                "An updates preference entry field is available.",
+                "An optional accessibility notes entry field is available.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "profile_error",
+          "name": "profile_error",
+          "requirements": [
+            "TH-15"
+          ],
+          "properties": {
+            "business": {
+              "description": "Member profile form headed Profile details need attention, showing field validation explanations.",
+              "rules": [
+                "A member profile validation error is visible.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "profile_saved",
+          "name": "profile_saved",
+          "requirements": [
+            "TH-16"
+          ],
+          "properties": {
+            "business": {
+              "description": "Profile save acknowledgement headed Member profile saved, displaying persisted member values.",
+              "rules": [
+                "The displayed display name equals the submitted display name after trimming surrounding spaces.",
+                "The displayed member email equals the submitted member email after trimming surrounding spaces.",
+                "The displayed updates preference equals the submitted updates preference.",
+                "The profile is explicitly acknowledged as saved.",
+                "The displayed accessibility notes equal the submitted access notes after trimming spaces, with a blank notes value displayed as None.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "cancellation_details",
+          "name": "cancellation_details",
+          "requirements": [
+            "TH-17"
+          ],
+          "properties": {
+            "business": {
+              "description": "Cancellation request form headed Request a cancellation, showing the existing booking reference and proposed full refund.",
+              "rules": [
+                "A cancellation reason can be supplied.",
+                "The proposed full refund is displayed.",
+                "The traveller can keep the existing booking.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "cancellation_error",
+          "name": "cancellation_error",
+          "requirements": [
+            "TH-18"
+          ],
+          "properties": {
+            "business": {
+              "description": "Cancellation form headed Cancellation reason needs attention, showing a reason validation explanation.",
+              "rules": [
+                "A cancellation reason validation error is visible.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "cancellation_review",
+          "name": "cancellation_review",
+          "requirements": [
+            "TH-19"
+          ],
+          "properties": {
+            "business": {
+              "description": "Cancellation preview headed Review your cancellation, awaiting final cancellation and refund.",
+              "rules": [
+                "The displayed cancellation reason equals the submitted cancellation reason after trimming surrounding spaces.",
+                "The booking is explicitly still confirmed.",
+                "No refund has been issued at this stage.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        },
+        {
+          "id": "cancellation_done",
+          "name": "cancellation_done",
+          "requirements": [
+            "TH-20"
+          ],
+          "properties": {
+            "business": {
+              "description": "Cancellation acknowledgement headed Booking cancelled and refunded, confirming released places and the issued full refund.",
+              "rules": [
+                "The booking is explicitly cancelled.",
+                "The reserved places are explicitly released.",
+                "The full refund is acknowledged as issued.",
+                "The displayed cancellation reason equals the submitted cancellation reason after trimming surrounding spaces.",
+                "The main navigation offers Home, Adventures, Equipment, My account and Help."
+              ]
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "home_to_catalogue",
+          "name": "home_to_catalogue",
+          "sourceVertexId": "home",
+          "targetVertexId": "catalogue",
+          "weight": 0.066,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "home_to_equipment",
+          "name": "home_to_equipment",
+          "sourceVertexId": "home",
+          "targetVertexId": "equipment",
+          "weight": 0.066,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "home_to_account",
+          "name": "home_to_account",
+          "sourceVertexId": "home",
+          "targetVertexId": "account",
+          "weight": 0.066,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "home_to_help",
+          "name": "home_to_help",
+          "sourceVertexId": "home",
+          "targetVertexId": "help",
+          "weight": 0.066,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "catalogue_to_home",
+          "name": "catalogue_to_home",
+          "sourceVertexId": "catalogue",
+          "targetVertexId": "home",
+          "weight": 0.0396,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "catalogue_to_equipment",
+          "name": "catalogue_to_equipment",
+          "sourceVertexId": "catalogue",
+          "targetVertexId": "equipment",
+          "weight": 0.0396,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "catalogue_to_account",
+          "name": "catalogue_to_account",
+          "sourceVertexId": "catalogue",
+          "targetVertexId": "account",
+          "weight": 0.0396,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "catalogue_to_help",
+          "name": "catalogue_to_help",
+          "sourceVertexId": "catalogue",
+          "targetVertexId": "help",
+          "weight": 0.0396,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "ridge_to_home",
+          "name": "ridge_to_home",
+          "sourceVertexId": "ridge",
+          "targetVertexId": "home",
+          "weight": 0.0495,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "ridge_to_catalogue",
+          "name": "ridge_to_catalogue",
+          "sourceVertexId": "ridge",
+          "targetVertexId": "catalogue",
+          "weight": 0.0495,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "ridge_to_equipment",
+          "name": "ridge_to_equipment",
+          "sourceVertexId": "ridge",
+          "targetVertexId": "equipment",
+          "weight": 0.0495,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "ridge_to_account",
+          "name": "ridge_to_account",
+          "sourceVertexId": "ridge",
+          "targetVertexId": "account",
+          "weight": 0.0495,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "ridge_to_help",
+          "name": "ridge_to_help",
+          "sourceVertexId": "ridge",
+          "targetVertexId": "help",
+          "weight": 0.0495,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "river_to_home",
+          "name": "river_to_home",
+          "sourceVertexId": "river",
+          "targetVertexId": "home",
+          "weight": 0.0495,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "river_to_catalogue",
+          "name": "river_to_catalogue",
+          "sourceVertexId": "river",
+          "targetVertexId": "catalogue",
+          "weight": 0.0495,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "river_to_equipment",
+          "name": "river_to_equipment",
+          "sourceVertexId": "river",
+          "targetVertexId": "equipment",
+          "weight": 0.0495,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "river_to_account",
+          "name": "river_to_account",
+          "sourceVertexId": "river",
+          "targetVertexId": "account",
+          "weight": 0.0495,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "river_to_help",
+          "name": "river_to_help",
+          "sourceVertexId": "river",
+          "targetVertexId": "help",
+          "weight": 0.0495,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "equipment_to_home",
+          "name": "equipment_to_home",
+          "sourceVertexId": "equipment",
+          "targetVertexId": "home",
+          "weight": 0.0396,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "equipment_to_catalogue",
+          "name": "equipment_to_catalogue",
+          "sourceVertexId": "equipment",
+          "targetVertexId": "catalogue",
+          "weight": 0.0396,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "equipment_to_account",
+          "name": "equipment_to_account",
+          "sourceVertexId": "equipment",
+          "targetVertexId": "account",
+          "weight": 0.0396,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "equipment_to_help",
+          "name": "equipment_to_help",
+          "sourceVertexId": "equipment",
+          "targetVertexId": "help",
+          "weight": 0.0396,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "policies_to_home",
+          "name": "policies_to_home",
+          "sourceVertexId": "policies",
+          "targetVertexId": "home",
+          "weight": 0.07615385,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "policies_to_catalogue",
+          "name": "policies_to_catalogue",
+          "sourceVertexId": "policies",
+          "targetVertexId": "catalogue",
+          "weight": 0.07615385,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "policies_to_equipment",
+          "name": "policies_to_equipment",
+          "sourceVertexId": "policies",
+          "targetVertexId": "equipment",
+          "weight": 0.07615385,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "policies_to_account",
+          "name": "policies_to_account",
+          "sourceVertexId": "policies",
+          "targetVertexId": "account",
+          "weight": 0.07615385,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "policies_to_help",
+          "name": "policies_to_help",
+          "sourceVertexId": "policies",
+          "targetVertexId": "help",
+          "weight": 0.07615385,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "help_to_home",
+          "name": "help_to_home",
+          "sourceVertexId": "help",
+          "targetVertexId": "home",
+          "weight": 0.07615385,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "help_to_catalogue",
+          "name": "help_to_catalogue",
+          "sourceVertexId": "help",
+          "targetVertexId": "catalogue",
+          "weight": 0.07615385,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "help_to_equipment",
+          "name": "help_to_equipment",
+          "sourceVertexId": "help",
+          "targetVertexId": "equipment",
+          "weight": 0.07615385,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "help_to_account",
+          "name": "help_to_account",
+          "sourceVertexId": "help",
+          "targetVertexId": "account",
+          "weight": 0.07615385,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "account_to_home",
+          "name": "account_to_home",
+          "sourceVertexId": "account",
+          "targetVertexId": "home",
+          "weight": 0.07615385,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "account_to_catalogue",
+          "name": "account_to_catalogue",
+          "sourceVertexId": "account",
+          "targetVertexId": "catalogue",
+          "weight": 0.07615385,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "account_to_equipment",
+          "name": "account_to_equipment",
+          "sourceVertexId": "account",
+          "targetVertexId": "equipment",
+          "weight": 0.07615385,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "account_to_help",
+          "name": "account_to_help",
+          "sourceVertexId": "account",
+          "targetVertexId": "help",
+          "weight": 0.07615385,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "booking_details_to_home",
+          "name": "booking_details_to_home",
+          "sourceVertexId": "booking_details",
+          "targetVertexId": "home",
+          "weight": 0.0309375,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "booking_details_to_catalogue",
+          "name": "booking_details_to_catalogue",
+          "sourceVertexId": "booking_details",
+          "targetVertexId": "catalogue",
+          "weight": 0.0309375,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "booking_details_to_equipment",
+          "name": "booking_details_to_equipment",
+          "sourceVertexId": "booking_details",
+          "targetVertexId": "equipment",
+          "weight": 0.0309375,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "booking_details_to_account",
+          "name": "booking_details_to_account",
+          "sourceVertexId": "booking_details",
+          "targetVertexId": "account",
+          "weight": 0.0309375,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "booking_details_to_help",
+          "name": "booking_details_to_help",
+          "sourceVertexId": "booking_details",
+          "targetVertexId": "help",
+          "weight": 0.0309375,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "booking_pickup_to_home",
+          "name": "booking_pickup_to_home",
+          "sourceVertexId": "booking_pickup",
+          "targetVertexId": "home",
+          "weight": 0.03413793,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "booking_pickup_to_catalogue",
+          "name": "booking_pickup_to_catalogue",
+          "sourceVertexId": "booking_pickup",
+          "targetVertexId": "catalogue",
+          "weight": 0.03413793,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "booking_pickup_to_equipment",
+          "name": "booking_pickup_to_equipment",
+          "sourceVertexId": "booking_pickup",
+          "targetVertexId": "equipment",
+          "weight": 0.03413793,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "booking_pickup_to_account",
+          "name": "booking_pickup_to_account",
+          "sourceVertexId": "booking_pickup",
+          "targetVertexId": "account",
+          "weight": 0.03413793,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "booking_pickup_to_help",
+          "name": "booking_pickup_to_help",
+          "sourceVertexId": "booking_pickup",
+          "targetVertexId": "help",
+          "weight": 0.03413793,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "booking_error_to_home",
+          "name": "booking_error_to_home",
+          "sourceVertexId": "booking_error",
+          "targetVertexId": "home",
+          "weight": 0.0396,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "booking_error_to_catalogue",
+          "name": "booking_error_to_catalogue",
+          "sourceVertexId": "booking_error",
+          "targetVertexId": "catalogue",
+          "weight": 0.0396,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "booking_error_to_equipment",
+          "name": "booking_error_to_equipment",
+          "sourceVertexId": "booking_error",
+          "targetVertexId": "equipment",
+          "weight": 0.0396,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "booking_error_to_account",
+          "name": "booking_error_to_account",
+          "sourceVertexId": "booking_error",
+          "targetVertexId": "account",
+          "weight": 0.0396,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "booking_error_to_help",
+          "name": "booking_error_to_help",
+          "sourceVertexId": "booking_error",
+          "targetVertexId": "help",
+          "weight": 0.0396,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "booking_review_to_home",
+          "name": "booking_review_to_home",
+          "sourceVertexId": "booking_review",
+          "targetVertexId": "home",
+          "weight": 0.0495,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "booking_review_to_catalogue",
+          "name": "booking_review_to_catalogue",
+          "sourceVertexId": "booking_review",
+          "targetVertexId": "catalogue",
+          "weight": 0.0495,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "booking_review_to_equipment",
+          "name": "booking_review_to_equipment",
+          "sourceVertexId": "booking_review",
+          "targetVertexId": "equipment",
+          "weight": 0.0495,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "booking_review_to_account",
+          "name": "booking_review_to_account",
+          "sourceVertexId": "booking_review",
+          "targetVertexId": "account",
+          "weight": 0.0495,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "booking_review_to_help",
+          "name": "booking_review_to_help",
+          "sourceVertexId": "booking_review",
+          "targetVertexId": "help",
+          "weight": 0.0495,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "booking_confirmed_to_home",
+          "name": "booking_confirmed_to_home",
+          "sourceVertexId": "booking_confirmed",
+          "targetVertexId": "home",
+          "weight": 0.0396,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "booking_confirmed_to_catalogue",
+          "name": "booking_confirmed_to_catalogue",
+          "sourceVertexId": "booking_confirmed",
+          "targetVertexId": "catalogue",
+          "weight": 0.0396,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "booking_confirmed_to_equipment",
+          "name": "booking_confirmed_to_equipment",
+          "sourceVertexId": "booking_confirmed",
+          "targetVertexId": "equipment",
+          "weight": 0.0396,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "booking_confirmed_to_account",
+          "name": "booking_confirmed_to_account",
+          "sourceVertexId": "booking_confirmed",
+          "targetVertexId": "account",
+          "weight": 0.0396,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "booking_confirmed_to_help",
+          "name": "booking_confirmed_to_help",
+          "sourceVertexId": "booking_confirmed",
+          "targetVertexId": "help",
+          "weight": 0.0396,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "profile_edit_to_home",
+          "name": "profile_edit_to_home",
+          "sourceVertexId": "profile_edit",
+          "targetVertexId": "home",
+          "weight": 0.055,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "profile_edit_to_catalogue",
+          "name": "profile_edit_to_catalogue",
+          "sourceVertexId": "profile_edit",
+          "targetVertexId": "catalogue",
+          "weight": 0.055,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "profile_edit_to_equipment",
+          "name": "profile_edit_to_equipment",
+          "sourceVertexId": "profile_edit",
+          "targetVertexId": "equipment",
+          "weight": 0.055,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "profile_edit_to_account",
+          "name": "profile_edit_to_account",
+          "sourceVertexId": "profile_edit",
+          "targetVertexId": "account",
+          "weight": 0.055,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "profile_edit_to_help",
+          "name": "profile_edit_to_help",
+          "sourceVertexId": "profile_edit",
+          "targetVertexId": "help",
+          "weight": 0.055,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "profile_error_to_home",
+          "name": "profile_error_to_home",
+          "sourceVertexId": "profile_error",
+          "targetVertexId": "home",
+          "weight": 0.04304348,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "profile_error_to_catalogue",
+          "name": "profile_error_to_catalogue",
+          "sourceVertexId": "profile_error",
+          "targetVertexId": "catalogue",
+          "weight": 0.04304348,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "profile_error_to_equipment",
+          "name": "profile_error_to_equipment",
+          "sourceVertexId": "profile_error",
+          "targetVertexId": "equipment",
+          "weight": 0.04304348,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "profile_error_to_account",
+          "name": "profile_error_to_account",
+          "sourceVertexId": "profile_error",
+          "targetVertexId": "account",
+          "weight": 0.04304348,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "profile_error_to_help",
+          "name": "profile_error_to_help",
+          "sourceVertexId": "profile_error",
+          "targetVertexId": "help",
+          "weight": 0.04304348,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "profile_saved_to_home",
+          "name": "profile_saved_to_home",
+          "sourceVertexId": "profile_saved",
+          "targetVertexId": "home",
+          "weight": 0.09,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "profile_saved_to_catalogue",
+          "name": "profile_saved_to_catalogue",
+          "sourceVertexId": "profile_saved",
+          "targetVertexId": "catalogue",
+          "weight": 0.09,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "profile_saved_to_equipment",
+          "name": "profile_saved_to_equipment",
+          "sourceVertexId": "profile_saved",
+          "targetVertexId": "equipment",
+          "weight": 0.09,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "profile_saved_to_account",
+          "name": "profile_saved_to_account",
+          "sourceVertexId": "profile_saved",
+          "targetVertexId": "account",
+          "weight": 0.09,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "profile_saved_to_help",
+          "name": "profile_saved_to_help",
+          "sourceVertexId": "profile_saved",
+          "targetVertexId": "help",
+          "weight": 0.09,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "cancellation_details_to_home",
+          "name": "cancellation_details_to_home",
+          "sourceVertexId": "cancellation_details",
+          "targetVertexId": "home",
+          "weight": 0.03807692,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "cancellation_details_to_catalogue",
+          "name": "cancellation_details_to_catalogue",
+          "sourceVertexId": "cancellation_details",
+          "targetVertexId": "catalogue",
+          "weight": 0.03807692,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "cancellation_details_to_equipment",
+          "name": "cancellation_details_to_equipment",
+          "sourceVertexId": "cancellation_details",
+          "targetVertexId": "equipment",
+          "weight": 0.03807692,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "cancellation_details_to_account",
+          "name": "cancellation_details_to_account",
+          "sourceVertexId": "cancellation_details",
+          "targetVertexId": "account",
+          "weight": 0.03807692,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "cancellation_details_to_help",
+          "name": "cancellation_details_to_help",
+          "sourceVertexId": "cancellation_details",
+          "targetVertexId": "help",
+          "weight": 0.03807692,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "cancellation_error_to_home",
+          "name": "cancellation_error_to_home",
+          "sourceVertexId": "cancellation_error",
+          "targetVertexId": "home",
+          "weight": 0.03193548,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "cancellation_error_to_catalogue",
+          "name": "cancellation_error_to_catalogue",
+          "sourceVertexId": "cancellation_error",
+          "targetVertexId": "catalogue",
+          "weight": 0.03193548,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "cancellation_error_to_equipment",
+          "name": "cancellation_error_to_equipment",
+          "sourceVertexId": "cancellation_error",
+          "targetVertexId": "equipment",
+          "weight": 0.03193548,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "cancellation_error_to_account",
+          "name": "cancellation_error_to_account",
+          "sourceVertexId": "cancellation_error",
+          "targetVertexId": "account",
+          "weight": 0.03193548,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "cancellation_error_to_help",
+          "name": "cancellation_error_to_help",
+          "sourceVertexId": "cancellation_error",
+          "targetVertexId": "help",
+          "weight": 0.03193548,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "cancellation_review_to_home",
+          "name": "cancellation_review_to_home",
+          "sourceVertexId": "cancellation_review",
+          "targetVertexId": "home",
+          "weight": 0.03807692,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "cancellation_review_to_catalogue",
+          "name": "cancellation_review_to_catalogue",
+          "sourceVertexId": "cancellation_review",
+          "targetVertexId": "catalogue",
+          "weight": 0.03807692,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "cancellation_review_to_equipment",
+          "name": "cancellation_review_to_equipment",
+          "sourceVertexId": "cancellation_review",
+          "targetVertexId": "equipment",
+          "weight": 0.03807692,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "cancellation_review_to_account",
+          "name": "cancellation_review_to_account",
+          "sourceVertexId": "cancellation_review",
+          "targetVertexId": "account",
+          "weight": 0.03807692,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "cancellation_review_to_help",
+          "name": "cancellation_review_to_help",
+          "sourceVertexId": "cancellation_review",
+          "targetVertexId": "help",
+          "weight": 0.03807692,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "cancellation_done_to_home",
+          "name": "cancellation_done_to_home",
+          "sourceVertexId": "cancellation_done",
+          "targetVertexId": "home",
+          "weight": 0.12375,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the Trailhead home page."
+            }
+          }
+        },
+        {
+          "id": "cancellation_done_to_catalogue",
+          "name": "cancellation_done_to_catalogue",
+          "sourceVertexId": "cancellation_done",
+          "targetVertexId": "catalogue",
+          "weight": 0.12375,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the adventure catalogue."
+            }
+          }
+        },
+        {
+          "id": "cancellation_done_to_equipment",
+          "name": "cancellation_done_to_equipment",
+          "sourceVertexId": "cancellation_done",
+          "targetVertexId": "equipment",
+          "weight": 0.12375,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the equipment guide."
+            }
+          }
+        },
+        {
+          "id": "cancellation_done_to_account",
+          "name": "cancellation_done_to_account",
+          "sourceVertexId": "cancellation_done",
+          "targetVertexId": "account",
+          "weight": 0.12375,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the member account page."
+            }
+          }
+        },
+        {
+          "id": "cancellation_done_to_help",
+          "name": "cancellation_done_to_help",
+          "sourceVertexId": "cancellation_done",
+          "targetVertexId": "help",
+          "weight": 0.12375,
+          "properties": {
+            "business": {
+              "intent": "Leave the current activity and visit the help page."
+            }
+          }
+        },
+        {
+          "id": "home_plan_trip",
+          "name": "home_plan_trip",
+          "sourceVertexId": "home",
+          "targetVertexId": "booking_details",
+          "weight": 0.528,
+          "properties": {
+            "business": {
+              "intent": "Begin planning a new adventure."
+            }
+          }
+        },
+        {
+          "id": "catalogue_plan_trip",
+          "name": "catalogue_plan_trip",
+          "sourceVertexId": "catalogue",
+          "targetVertexId": "booking_details",
+          "weight": 0.3168,
+          "properties": {
+            "business": {
+              "intent": "Begin planning a new adventure."
+            }
+          }
+        },
+        {
+          "id": "ridge_plan_trip",
+          "name": "ridge_plan_trip",
+          "sourceVertexId": "ridge",
+          "targetVertexId": "booking_details",
+          "weight": 0.396,
+          "properties": {
+            "business": {
+              "intent": "Begin planning a new adventure."
+            }
+          }
+        },
+        {
+          "id": "river_plan_trip",
+          "name": "river_plan_trip",
+          "sourceVertexId": "river",
+          "targetVertexId": "booking_details",
+          "weight": 0.396,
+          "properties": {
+            "business": {
+              "intent": "Begin planning a new adventure."
+            }
+          }
+        },
+        {
+          "id": "equipment_plan_trip",
+          "name": "equipment_plan_trip",
+          "sourceVertexId": "equipment",
+          "targetVertexId": "booking_details",
+          "weight": 0.3168,
+          "properties": {
+            "business": {
+              "intent": "Begin planning a new adventure."
+            }
+          }
+        },
+        {
+          "id": "policies_plan_trip",
+          "name": "policies_plan_trip",
+          "sourceVertexId": "policies",
+          "targetVertexId": "booking_details",
+          "weight": 0.60923077,
+          "properties": {
+            "business": {
+              "intent": "Begin planning a new adventure."
+            }
+          }
+        },
+        {
+          "id": "home_read_policies",
+          "name": "home_read_policies",
+          "sourceVertexId": "home",
+          "targetVertexId": "policies",
+          "weight": 0.198,
+          "properties": {
+            "business": {
+              "intent": "Read the booking and refund policies."
+            }
+          }
+        },
+        {
+          "id": "catalogue_read_policies",
+          "name": "catalogue_read_policies",
+          "sourceVertexId": "catalogue",
+          "targetVertexId": "policies",
+          "weight": 0.1188,
+          "properties": {
+            "business": {
+              "intent": "Read the booking and refund policies."
+            }
+          }
+        },
+        {
+          "id": "ridge_read_policies",
+          "name": "ridge_read_policies",
+          "sourceVertexId": "ridge",
+          "targetVertexId": "policies",
+          "weight": 0.1485,
+          "properties": {
+            "business": {
+              "intent": "Read the booking and refund policies."
+            }
+          }
+        },
+        {
+          "id": "river_read_policies",
+          "name": "river_read_policies",
+          "sourceVertexId": "river",
+          "targetVertexId": "policies",
+          "weight": 0.1485,
+          "properties": {
+            "business": {
+              "intent": "Read the booking and refund policies."
+            }
+          }
+        },
+        {
+          "id": "equipment_read_policies",
+          "name": "equipment_read_policies",
+          "sourceVertexId": "equipment",
+          "targetVertexId": "policies",
+          "weight": 0.1188,
+          "properties": {
+            "business": {
+              "intent": "Read the booking and refund policies."
+            }
+          }
+        },
+        {
+          "id": "help_read_policies",
+          "name": "help_read_policies",
+          "sourceVertexId": "help",
+          "targetVertexId": "policies",
+          "weight": 0.22846154,
+          "properties": {
+            "business": {
+              "intent": "Read the booking and refund policies."
+            }
+          }
+        },
+        {
+          "id": "account_read_policies",
+          "name": "account_read_policies",
+          "sourceVertexId": "account",
+          "targetVertexId": "policies",
+          "weight": 0.22846154,
+          "properties": {
+            "business": {
+              "intent": "Read the booking and refund policies."
+            }
+          }
+        },
+        {
+          "id": "booking_details_read_policies",
+          "name": "booking_details_read_policies",
+          "sourceVertexId": "booking_details",
+          "targetVertexId": "policies",
+          "weight": 0.0928125,
+          "properties": {
+            "business": {
+              "intent": "Read the booking and refund policies."
+            }
+          }
+        },
+        {
+          "id": "booking_confirmed_read_policies",
+          "name": "booking_confirmed_read_policies",
+          "sourceVertexId": "booking_confirmed",
+          "targetVertexId": "policies",
+          "weight": 0.1188,
+          "properties": {
+            "business": {
+              "intent": "Read the booking and refund policies."
+            }
+          }
+        },
+        {
+          "id": "cancellation_done_read_policies",
+          "name": "cancellation_done_read_policies",
+          "sourceVertexId": "cancellation_done",
+          "targetVertexId": "policies",
+          "weight": 0.37125,
+          "properties": {
+            "business": {
+              "intent": "Read the booking and refund policies."
+            }
+          }
+        },
+        {
+          "id": "catalogue_explore_ridge",
+          "name": "catalogue_explore_ridge",
+          "sourceVertexId": "catalogue",
+          "targetVertexId": "ridge",
+          "weight": 0.198,
+          "properties": {
+            "business": {
+              "intent": "Read the Ridge walk adventure information."
+            }
+          }
+        },
+        {
+          "id": "catalogue_explore_river",
+          "name": "catalogue_explore_river",
+          "sourceVertexId": "catalogue",
+          "targetVertexId": "river",
+          "weight": 0.198,
+          "properties": {
+            "business": {
+              "intent": "Read the River paddle adventure information."
+            }
+          }
+        },
+        {
+          "id": "equipment_explore_ridge",
+          "name": "equipment_explore_ridge",
+          "sourceVertexId": "equipment",
+          "targetVertexId": "ridge",
+          "weight": 0.198,
+          "properties": {
+            "business": {
+              "intent": "Read the Ridge walk adventure information."
+            }
+          }
+        },
+        {
+          "id": "equipment_explore_river",
+          "name": "equipment_explore_river",
+          "sourceVertexId": "equipment",
+          "targetVertexId": "river",
+          "weight": 0.198,
+          "properties": {
+            "business": {
+              "intent": "Read the River paddle adventure information."
+            }
+          }
+        },
+        {
+          "id": "compare_river",
+          "name": "compare_river",
+          "sourceVertexId": "ridge",
+          "targetVertexId": "river",
+          "weight": 0.198,
+          "properties": {
+            "business": {
+              "intent": "Compare the River paddle adventure."
+            }
+          }
+        },
+        {
+          "id": "compare_ridge",
+          "name": "compare_ridge",
+          "sourceVertexId": "river",
+          "targetVertexId": "ridge",
+          "weight": 0.198,
+          "properties": {
+            "business": {
+              "intent": "Compare the Ridge walk adventure."
+            }
+          }
+        },
+        {
+          "id": "choose_marina_pickup",
+          "name": "choose_marina_pickup",
+          "sourceVertexId": "booking_details",
+          "targetVertexId": "booking_pickup",
+          "weight": 0.2784375,
+          "properties": {
+            "business": {
+              "intent": "Choose Marina pier as the departure pickup point for this adventure."
+            }
+          }
+        },
+        {
+          "id": "choose_city_pickup",
+          "name": "choose_city_pickup",
+          "sourceVertexId": "booking_pickup",
+          "targetVertexId": "booking_details",
+          "weight": 0.30724138,
+          "properties": {
+            "business": {
+              "intent": "Choose City visitor centre as the departure pickup point for this adventure."
+            }
+          }
+        },
+        {
+          "id": "booking_details_submit_valid",
+          "name": "booking_details_submit_valid",
+          "sourceVertexId": "booking_details",
+          "targetVertexId": "booking_review",
+          "weight": 0.2784375,
+          "properties": {
+            "business": {
+              "intent": "Submit the supplied adventure party details for review. Stop after the first acceptance or rejection.",
+              "data set": "Adventure party",
+              "rejected at": "booking_error"
+            }
+          }
+        },
+        {
+          "id": "booking_details_submit_invalid",
+          "name": "booking_details_submit_invalid",
+          "sourceVertexId": "booking_details",
+          "targetVertexId": "booking_error",
+          "weight": 0.185625,
+          "properties": {
+            "business": {
+              "intent": "Submit the supplied adventure party details for review. Stop after the first acceptance or rejection.",
+              "data set": "Adventure party",
+              "accepted at": "booking_review",
+              "rejected at": "booking_error",
+              "example": {
+                "Traveller name": "Alex Morgan",
+                "Contact email": "alex@example.test",
+                "Party size": 7,
+                "Adventure": "Ridge walk",
+                "Conservation contribution": 12.5
+              }
+            }
+          }
+        },
+        {
+          "id": "booking_pickup_submit_valid",
+          "name": "booking_pickup_submit_valid",
+          "sourceVertexId": "booking_pickup",
+          "targetVertexId": "booking_review",
+          "weight": 0.30724138,
+          "properties": {
+            "business": {
+              "intent": "Submit the supplied adventure party details for review. Stop after the first acceptance or rejection.",
+              "data set": "Adventure party",
+              "rejected at": "booking_error"
+            }
+          }
+        },
+        {
+          "id": "booking_pickup_submit_invalid",
+          "name": "booking_pickup_submit_invalid",
+          "sourceVertexId": "booking_pickup",
+          "targetVertexId": "booking_error",
+          "weight": 0.20482759,
+          "properties": {
+            "business": {
+              "intent": "Submit the supplied adventure party details for review. Stop after the first acceptance or rejection.",
+              "data set": "Adventure party",
+              "accepted at": "booking_review",
+              "rejected at": "booking_error",
+              "example": {
+                "Traveller name": "Alex Morgan",
+                "Contact email": "alex@example.test",
+                "Party size": 7,
+                "Adventure": "Ridge walk",
+                "Conservation contribution": 12.5
+              }
+            }
+          }
+        },
+        {
+          "id": "booking_error_submit_valid",
+          "name": "booking_error_submit_valid",
+          "sourceVertexId": "booking_error",
+          "targetVertexId": "booking_review",
+          "weight": 0.3564,
+          "properties": {
+            "business": {
+              "intent": "Submit the supplied adventure party details for review. Stop after the first acceptance or rejection.",
+              "data set": "Adventure party",
+              "rejected at": "booking_error"
+            }
+          }
+        },
+        {
+          "id": "booking_error_submit_invalid",
+          "name": "booking_error_submit_invalid",
+          "sourceVertexId": "booking_error",
+          "targetVertexId": "booking_error",
+          "weight": 0.2376,
+          "properties": {
+            "business": {
+              "intent": "Submit the supplied adventure party details for review. Stop after the first acceptance or rejection.",
+              "data set": "Adventure party",
+              "accepted at": "booking_review",
+              "rejected at": "booking_error",
+              "example": {
+                "Traveller name": "Alex Morgan",
+                "Contact email": "alex@example.test",
+                "Party size": 7,
+                "Adventure": "Ridge walk",
+                "Conservation contribution": 12.5
+              }
+            }
+          }
+        },
+        {
+          "id": "revise_booking",
+          "name": "revise_booking",
+          "sourceVertexId": "booking_review",
+          "targetVertexId": "booking_details",
+          "weight": 0.2475,
+          "properties": {
+            "business": {
+              "intent": "Revise the draft adventure details using City visitor centre as pickup."
+            }
+          }
+        },
+        {
+          "id": "clear_booking_errors",
+          "name": "clear_booking_errors",
+          "sourceVertexId": "booking_error",
+          "targetVertexId": "booking_details",
+          "weight": 0.198,
+          "properties": {
+            "business": {
+              "intent": "Clear the validation errors and revise the adventure details using City visitor centre pickup."
+            }
+          }
+        },
+        {
+          "id": "confirm_booking",
+          "name": "confirm_booking",
+          "sourceVertexId": "booking_review",
+          "targetVertexId": "booking_confirmed",
+          "weight": 0.495,
+          "properties": {
+            "business": {
+              "intent": "Finally confirm the draft adventure and reserve its places."
+            }
+          }
+        },
+        {
+          "id": "plan_another_trip",
+          "name": "plan_another_trip",
+          "sourceVertexId": "booking_confirmed",
+          "targetVertexId": "booking_details",
+          "weight": 0.3168,
+          "properties": {
+            "business": {
+              "intent": "Begin planning a new adventure."
+            }
+          }
+        },
+        {
+          "id": "account_edit_profile",
+          "name": "account_edit_profile",
+          "sourceVertexId": "account",
+          "targetVertexId": "profile_edit",
+          "weight": 0.45692308,
+          "properties": {
+            "business": {
+              "intent": "Edit the stored member profile."
+            }
+          }
+        },
+        {
+          "id": "help_edit_profile",
+          "name": "help_edit_profile",
+          "sourceVertexId": "help",
+          "targetVertexId": "profile_edit",
+          "weight": 0.45692308,
+          "properties": {
+            "business": {
+              "intent": "Edit the stored member profile."
+            }
+          }
+        },
+        {
+          "id": "profile_saved_edit_profile",
+          "name": "profile_saved_edit_profile",
+          "sourceVertexId": "profile_saved",
+          "targetVertexId": "profile_edit",
+          "weight": 0.54,
+          "properties": {
+            "business": {
+              "intent": "Edit the stored member profile."
+            }
+          }
+        },
+        {
+          "id": "profile_edit_save_valid",
+          "name": "profile_edit_save_valid",
+          "sourceVertexId": "profile_edit",
+          "targetVertexId": "profile_saved",
+          "weight": 0.44,
+          "properties": {
+            "business": {
+              "intent": "Save the supplied member profile. Stop after the first acceptance or rejection.",
+              "data set": "Member profile",
+              "rejected at": "profile_error"
+            }
+          }
+        },
+        {
+          "id": "profile_edit_save_invalid",
+          "name": "profile_edit_save_invalid",
+          "sourceVertexId": "profile_edit",
+          "targetVertexId": "profile_error",
+          "weight": 0.275,
+          "properties": {
+            "business": {
+              "intent": "Save the supplied member profile. Stop after the first acceptance or rejection.",
+              "data set": "Member profile",
+              "accepted at": "profile_saved",
+              "rejected at": "profile_error",
+              "example": {
+                "Display name": "Sam Taylor",
+                "Member email": "missing-at",
+                "Updates preference": "SMS",
+                "Access notes": "Step-free pickup requested"
+              }
+            }
+          }
+        },
+        {
+          "id": "profile_error_save_valid",
+          "name": "profile_error_save_valid",
+          "sourceVertexId": "profile_error",
+          "targetVertexId": "profile_saved",
+          "weight": 0.34434783,
+          "properties": {
+            "business": {
+              "intent": "Save the supplied member profile. Stop after the first acceptance or rejection.",
+              "data set": "Member profile",
+              "rejected at": "profile_error"
+            }
+          }
+        },
+        {
+          "id": "profile_error_save_invalid",
+          "name": "profile_error_save_invalid",
+          "sourceVertexId": "profile_error",
+          "targetVertexId": "profile_error",
+          "weight": 0.21521739,
+          "properties": {
+            "business": {
+              "intent": "Save the supplied member profile. Stop after the first acceptance or rejection.",
+              "data set": "Member profile",
+              "accepted at": "profile_saved",
+              "rejected at": "profile_error",
+              "example": {
+                "Display name": "Sam Taylor",
+                "Member email": "missing-at",
+                "Updates preference": "SMS",
+                "Access notes": "Step-free pickup requested"
+              }
+            }
+          }
+        },
+        {
+          "id": "clear_profile_errors",
+          "name": "clear_profile_errors",
+          "sourceVertexId": "profile_error",
+          "targetVertexId": "profile_edit",
+          "weight": 0.21521739,
+          "properties": {
+            "business": {
+              "intent": "Clear the validation errors and revise the member profile."
+            }
+          }
+        },
+        {
+          "id": "request_cancellation",
+          "name": "request_cancellation",
+          "sourceVertexId": "booking_confirmed",
+          "targetVertexId": "cancellation_details",
+          "weight": 0.3564,
+          "properties": {
+            "business": {
+              "intent": "Begin cancelling this confirmed adventure booking."
+            }
+          }
+        },
+        {
+          "id": "cancellation_details_submit_valid",
+          "name": "cancellation_details_submit_valid",
+          "sourceVertexId": "cancellation_details",
+          "targetVertexId": "cancellation_review",
+          "weight": 0.34269231,
+          "properties": {
+            "business": {
+              "intent": "Submit the supplied cancellation reason for review. Stop after the first acceptance or rejection.",
+              "data set": "Cancellation request",
+              "rejected at": "cancellation_error"
+            }
+          }
+        },
+        {
+          "id": "cancellation_details_submit_invalid",
+          "name": "cancellation_details_submit_invalid",
+          "sourceVertexId": "cancellation_details",
+          "targetVertexId": "cancellation_error",
+          "weight": 0.22846154,
+          "properties": {
+            "business": {
+              "intent": "Submit the supplied cancellation reason for review. Stop after the first acceptance or rejection.",
+              "data set": "Cancellation request",
+              "accepted at": "cancellation_review",
+              "rejected at": "cancellation_error",
+              "example": {
+                "Cancellation reason": "No"
+              }
+            }
+          }
+        },
+        {
+          "id": "cancellation_error_submit_valid",
+          "name": "cancellation_error_submit_valid",
+          "sourceVertexId": "cancellation_error",
+          "targetVertexId": "cancellation_review",
+          "weight": 0.28741935,
+          "properties": {
+            "business": {
+              "intent": "Submit the supplied cancellation reason for review. Stop after the first acceptance or rejection.",
+              "data set": "Cancellation request",
+              "rejected at": "cancellation_error"
+            }
+          }
+        },
+        {
+          "id": "cancellation_error_submit_invalid",
+          "name": "cancellation_error_submit_invalid",
+          "sourceVertexId": "cancellation_error",
+          "targetVertexId": "cancellation_error",
+          "weight": 0.1916129,
+          "properties": {
+            "business": {
+              "intent": "Submit the supplied cancellation reason for review. Stop after the first acceptance or rejection.",
+              "data set": "Cancellation request",
+              "accepted at": "cancellation_review",
+              "rejected at": "cancellation_error",
+              "example": {
+                "Cancellation reason": "No"
+              }
+            }
+          }
+        },
+        {
+          "id": "cancellation_details_keep_booking",
+          "name": "cancellation_details_keep_booking",
+          "sourceVertexId": "cancellation_details",
+          "targetVertexId": "booking_confirmed",
+          "weight": 0.22846154,
+          "properties": {
+            "business": {
+              "intent": "Abandon cancellation and keep this existing confirmed adventure booking."
+            }
+          }
+        },
+        {
+          "id": "cancellation_error_keep_booking",
+          "name": "cancellation_error_keep_booking",
+          "sourceVertexId": "cancellation_error",
+          "targetVertexId": "booking_confirmed",
+          "weight": 0.1916129,
+          "properties": {
+            "business": {
+              "intent": "Abandon cancellation and keep this existing confirmed adventure booking."
+            }
+          }
+        },
+        {
+          "id": "cancellation_review_keep_booking",
+          "name": "cancellation_review_keep_booking",
+          "sourceVertexId": "cancellation_review",
+          "targetVertexId": "booking_confirmed",
+          "weight": 0.22846154,
+          "properties": {
+            "business": {
+              "intent": "Abandon cancellation and keep this existing confirmed adventure booking."
+            }
+          }
+        },
+        {
+          "id": "revise_cancellation",
+          "name": "revise_cancellation",
+          "sourceVertexId": "cancellation_review",
+          "targetVertexId": "cancellation_details",
+          "weight": 0.19038462,
+          "properties": {
+            "business": {
+              "intent": "Revise the cancellation reason without cancelling the booking."
+            }
+          }
+        },
+        {
+          "id": "clear_cancellation_errors",
+          "name": "clear_cancellation_errors",
+          "sourceVertexId": "cancellation_error",
+          "targetVertexId": "cancellation_details",
+          "weight": 0.15967742,
+          "properties": {
+            "business": {
+              "intent": "Clear the validation error and revise the cancellation reason."
+            }
+          }
+        },
+        {
+          "id": "confirm_cancellation",
+          "name": "confirm_cancellation",
+          "sourceVertexId": "cancellation_review",
+          "targetVertexId": "cancellation_done",
+          "weight": 0.38076923,
+          "properties": {
+            "business": {
+              "intent": "Finally cancel this booking and issue its full refund."
+            }
+          }
+        }
+      ],
+      "properties": {
+        "business": {
+          "version": 3,
+          "purpose": "Explore guided adventures, manage member details, validate party inputs, reserve places only at final confirmation, and cancel with a full refund.",
+          "entry path": "/trailhead/",
+          "coverage": {
+            "edges": 100,
+            "states": 100
+          },
+          "rules": [
+            "Invalid adventure booking details are rejected with explanations identifying the affected fields.",
+            "Invalid member profile details are rejected with explanations identifying the affected fields.",
+            "Invalid cancellation reasons are rejected with an explanation identifying the problem.",
+            "The main navigation remains available throughout every activity.",
+            "Adventure prices are AUD 80 per traveller for Ridge walk and AUD 120 per traveller for River paddle."
+          ],
+          "data sets": {
+            "Adventure party": {
+              "Traveller name": {
+                "description": "The lead traveller’s full name",
+                "type": "text",
+                "required": true,
+                "minimum length": 2,
+                "maximum length": 60,
+                "example": "Alex Morgan"
+              },
+              "Contact email": {
+                "description": "Email address for the adventure booking",
+                "type": "email",
+                "required": true,
+                "example": "alex@example.test"
+              },
+              "Party size": {
+                "description": "How many travellers are included in this booking",
+                "type": "whole number",
+                "required": true,
+                "minimum": 1,
+                "maximum": 6,
+                "example": 2
+              },
+              "Adventure": {
+                "description": "Which guided trip the party is booking",
+                "type": "choice",
+                "required": true,
+                "options": [
+                  "Ridge walk",
+                  "River paddle"
+                ],
+                "example": "Ridge walk"
+              },
+              "Conservation contribution": {
+                "description": "An additional gift in AUD, added once to the whole booking",
+                "type": "number",
+                "required": true,
+                "minimum": 0,
+                "maximum": 50,
+                "example": 12.5
+              }
+            },
+            "Member profile": {
+              "Display name": {
+                "description": "The name displayed on the member account",
+                "type": "text",
+                "required": true,
+                "minimum length": 2,
+                "maximum length": 40,
+                "example": "Sam Taylor"
+              },
+              "Member email": {
+                "description": "Email address stored on the member account",
+                "type": "email",
+                "required": true,
+                "example": "sam@example.test"
+              },
+              "Updates preference": {
+                "description": "Preferred channel for member updates",
+                "type": "choice",
+                "required": true,
+                "options": [
+                  "Email",
+                  "SMS",
+                  "None"
+                ],
+                "example": "SMS"
+              },
+              "Access notes": {
+                "description": "Optional accessibility requirements for the member",
+                "type": "text",
+                "required": false,
+                "maximum length": 80,
+                "example": "Step-free pickup requested"
+              }
+            },
+            "Cancellation request": {
+              "Cancellation reason": {
+                "description": "Why the traveller is cancelling the existing booking",
+                "type": "text",
+                "required": true,
+                "minimum length": 5,
+                "maximum length": 120,
+                "example": "Our travel plans changed"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

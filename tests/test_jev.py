@@ -660,3 +660,96 @@ def test_uncertain_rule_kind_keeps_reference_data_without_inventing_a_comparison
     assert context["submitted_business_data"] == {"Places": 2}
     assert "Expected submitted values" not in json.dumps(questions["rule_1"])
     assert "does not require it to contain a previously submitted value" in json.dumps(questions["rule_1"])
+
+
+@pytest.mark.parametrize("value", ["5", "", "not a number"])
+def test_offscreen_submit_scrolls_without_losing_or_repairing_entered_values(model, value):
+    class LongForm(DOM):
+        scrolled = False
+
+        def observe(self, screenshot=False):
+            page = super().observe(screenshot)
+            if self.scrolled:
+                page["actions"] = [page["actions"][1]]
+                page["semantics"] = {
+                    "editable_fields": [
+                        {
+                            "label": "Party size",
+                            "scroll_direction": "up",
+                            "current_value": self.value,
+                        }
+                    ]
+                }
+            else:
+                page["actions"] = [
+                    page["actions"][0],
+                    {
+                        "id": "scroll_down",
+                        "kind": "scroll",
+                        "label": "Scroll down",
+                        "delta": 560,
+                    },
+                ]
+                page["semantics"] = {
+                    "available_buttons": [
+                        {
+                            "label": "Continue",
+                            "scroll_direction": "down",
+                            "in_viewport": False,
+                        }
+                    ]
+                }
+            return page
+
+        def act(self, action, page, text=None):
+            super().act(action, page, text)
+            if action["kind"] == "scroll":
+                self.scrolled = True
+
+    def choose(state, questions):
+        binding = questions.get("field_0", {}).get("criteria", {})
+        submission = questions.get("submission", {}).get("criteria", {})
+        return {
+            "field_0": "offscreen_0" if "offscreen_0" in binding else "1",
+            "submission": "offscreen_submit_0" if "offscreen_submit_0" in submission else "1",
+        }
+
+    client = Decisions(choose)
+    driver = JevBrowser(client, browser_factory=LongForm)
+    driver.reset("http://demo.test")
+    driver.pursue("Reserve", fields=model.data_sets["Reservation"], data={"Places": value})
+    assert driver.browser.events == [("fill", value), ("scroll", None), ("click", None)]
+    assert driver.trace[-1]["submission"]
+    for evidence, questions in client.requests:
+        if "field_0" in questions:
+            assert all("current_value" not in f for f in evidence["accessibility"].get("editable_fields", []))
+
+
+def test_changed_offscreen_value_stops_before_submission(model):
+    driver = JevBrowser(Decisions(lambda *_: {"field_0": "offscreen_0"}), browser_factory=DOM)
+    driver.reset("http://demo.test")
+    page = driver.observe()
+    page["semantics"] = {
+        "editable_fields": [
+            {
+                "label": "Party size",
+                "scroll_direction": "up",
+                "current_value": "4",
+            }
+        ]
+    }
+    with pytest.raises(Inconclusive, match="retain the exact test data"):
+        driver._data_action(page, "Reserve", model.data_sets["Reservation"], {"Places": "5"}, [], {"Places"})
+    assert driver.browser.events == []
+
+
+def test_offscreen_submission_without_supported_scroll_never_clicks(model):
+    client = Decisions(lambda *_: {"field_0": "1", "submission": "offscreen_submit_0"})
+    driver = JevBrowser(client, browser_factory=DOM)
+    driver.reset("http://demo.test")
+    page = driver.observe()
+    page["actions"][0]["value"] = "5"
+    page["semantics"] = {"available_buttons": [{"label": "Continue", "scroll_direction": "down"}]}
+    with pytest.raises(Inconclusive, match="submission control is outside"):
+        driver._data_action(page, "Reserve", model.data_sets["Reservation"], {"Places": "5"}, [], {"Places"})
+    assert driver.browser.events == []

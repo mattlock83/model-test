@@ -62,7 +62,7 @@ def parser():
         if name == "run":
             command.add_argument("--url", required=True, help="Application base URL")
         else:
-            command.add_argument("--site", choices=("booking", "feedback"), default="booking")
+            command.add_argument("--site", choices=("booking", "feedback", "trailhead"), default="booking")
             command.add_argument(
                 "--bug", action="store_true", help="Enable the booking demo's seat-limit defect"
             )

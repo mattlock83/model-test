@@ -64,3 +64,7 @@ An assertion (`ctx.check`, `assert`, or `Defect`) fails the test. Other hook exc
 Hooks cannot grant graph coverage: an edge is credited only after its destination and state hooks pass. Reports include hook events, phase, element, outcome, the loaded file path and SHA-256. Replay must use the same hook file and backend setup; the replay model hash does not by itself prove that external state or hook code is unchanged. No hook file is loaded automatically from a report.
 
 Async hooks are not supported directly. A synchronous hook can manage its own external clients or call `asyncio.run` if needed. There is no hook sandbox or automatic timeout for arbitrary user code.
+
+## Complete example
+
+The [Trailhead integration](../examples/trailhead/README.md) demonstrates repeated fixture resets, inventory and refund assertions, case auditing, and custom code for a bespoke pickup list. Its [hooks file](../examples/trailhead/hooks.py) uses `ctx.browser.browser.evaluate(...)` through the Jev Browser Harness connection to operate the actual widget. This is an explicitly loaded application integration; selectors never enter the graph, and browser state verification remains independent.

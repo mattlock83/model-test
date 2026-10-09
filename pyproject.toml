@@ -27,9 +27,10 @@ packages = ["model_test"]
 "dist" = "model_test/data/dist"
 "graphwalker.lock.json" = "model_test/data/graphwalker.lock.json"
 "docs/model-format.md" = "model_test/data/model-format.md"
+"examples" = "model_test/data/examples"
 
 [tool.hatch.build.targets.sdist]
-include = ["model_test", "models", "dist", "docs", "tests", "pyproject.toml", "graphwalker.lock.json", "README.md", "run-demo.sh", "uv.lock"]
+include = ["model_test", "models", "dist", "docs", "examples", "tests", "pyproject.toml", "graphwalker.lock.json", "README.md", "run-demo.sh", "uv.lock"]
 
 [tool.hatch.build.targets.sdist.force-include]
 "dist" = "dist"

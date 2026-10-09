@@ -2,7 +2,7 @@
 
 A model is the test specification. Describe **where the user can be, what they are trying to do, what must be true, and which data is permitted**. Do not describe selectors, clicks, typing sequences, page objects or code.
 
-Start with [the smaller enquiry model](../models/feedback.json) or [the booking model](../models/booking.json). Both use the same Python framework.
+Start with [the smaller enquiry model](../models/feedback.json) or [the booking model](../models/booking.json). Both use the same Python framework. For a larger specification with 20 states, 148 journeys, weighted edges, a predefined route and lifecycle integrations, see the [Trailhead example](../examples/trailhead/README.md).
 
 ## Graph structure
 

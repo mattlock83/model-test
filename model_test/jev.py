@@ -43,12 +43,13 @@ SEMANTICS = r"""(() => {
     editable_fields: [...document.querySelectorAll('input,textarea,select')]
       .filter(e => rendered(e) && !e.disabled && !e.readOnly).slice(0, 50).map(e => ({
         label: [...(e.labels || [])].map(l => l.innerText).join(' ') || e.getAttribute('aria-label') || '',
+        current_value: e.value,
         ...fieldPosition(e)
       })),
     available_buttons: [...document.querySelectorAll('button,[role="button"]')]
       .filter(e => rendered(e) && !e.disabled && e.getAttribute('aria-disabled') !== 'true')
       .slice(0, 50).map(e => ({
-        label: e.getAttribute('aria-label') || e.innerText, in_viewport: !!visible(e)
+        label: e.getAttribute('aria-label') || e.innerText, ...fieldPosition(e)
       })),
     invalid_fields: [...document.querySelectorAll('[aria-invalid="true"]')]
       .filter(visible).slice(0, 50).map(e => ({
@@ -384,6 +385,7 @@ class JevBrowser:
                     "binding_ref": index,
                     "label": field["label"],
                     "offscreen": field["scroll_direction"],
+                    "current_value": field.get("current_value"),
                 }
         criteria["UNAVAILABLE"] = "No uniquely matching editable control is currently visible."
         questions = {
@@ -395,6 +397,9 @@ class JevBrowser:
             for i, (name, field) in enumerate(fields.items())
         }
         observed = evidence(page)
+        observed["accessibility"] = copy.deepcopy(observed["accessibility"])
+        for control in observed["accessibility"].get("editable_fields", []):
+            control.pop("current_value", None)
         for element in observed["elements"]:
             # Binding concerns the field's meaning, not the validity of its contents.
             # Values remain in the local controls for exact-entry verification.
@@ -449,6 +454,16 @@ class JevBrowser:
         mapping = self.bindings(page, fields)
         for name, action in mapping.items():
             if "offscreen" in action:
+                # Current DOM evidence can verify an already entered field even
+                # when scrolling to the submit button moves it out of view.
+                actual = action.get("current_value")
+                if actual is not None and (
+                    str(actual) == str(data[name])
+                    or (name in entered and data_matches(actual, data[name], fields[name]))
+                ):
+                    continue
+                if name in entered and actual is not None:
+                    raise Inconclusive(f"The browser did not retain the exact test data for: {name}")
                 _, _, controls = action_space(page["actions"])
                 operation = "SCROLL_" + action["offscreen"].upper()
                 if operation not in controls:
@@ -476,17 +491,24 @@ class JevBrowser:
         if set(mapping) != set(fields):
             operation, action, submission = self._decision(page, goal, history, fields)
             return operation, action, submission, mapping
-        _, targets, _ = action_space(page["actions"])
+        _, targets, controls = action_space(page["actions"])
         candidates = targets.get("CLICK", {})
         criteria = {index: action["label"] for index, action in candidates.items()}
-        criteria["NONE"] = "No visible control submits these business details for the requested journey."
+        offscreen = {}
+        for i, button in enumerate(page.get("semantics", {}).get("available_buttons", [])):
+            if button.get("scroll_direction") in {"up", "down"}:
+                index = f"offscreen_submit_{i}"
+                offscreen[index] = button
+                criteria[index] = button["label"] + " (requires scrolling " + button["scroll_direction"] + ")"
+        criteria["NONE"] = "No observed control submits these business details for the requested journey."
         result = self.client.ask(
             evidence(page),
             {
                 "submission": question(
                     criteria,
                     {
-                        "question": "Which visible control submits the supplied business details?",
+                        "question": "Which observed control submits the supplied business details? "
+                        "Controls outside the viewport can be reached by scrolling.",
                         "journey": goal,
                         "rules": "All exact test values have been entered. "
                         "Submit them once, including invalid values. "
@@ -498,6 +520,11 @@ class JevBrowser:
         selected = self.client.answer(result, "submission", criteria)
         if selected == "NONE":
             raise Inconclusive("Jev could not identify a submission control for the supplied business data")
+        if selected in offscreen:
+            operation = "SCROLL_" + offscreen[selected]["scroll_direction"].upper()
+            if operation not in controls:
+                raise Inconclusive("The submission control is outside the supported scroll area")
+            return operation, controls[operation], False, mapping
         return "CLICK", candidates[selected], True, mapping
 
     def pursue(self, intent, *, fields=None, data=None, destination=None, states=None):
