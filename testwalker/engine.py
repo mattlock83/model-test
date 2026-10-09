@@ -1,18 +1,20 @@
 """Formal graph traversal and input exploration around a goal-driven browser agent."""
 
 import json
-import time
+import traceback
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urljoin, urlparse, urlunparse
 
+from .config import parse_http_url
 from .errors import Defect, Inconclusive
 from .graphwalker import generate_path
 from .hooks import HookContext, Hooks
 from .jev import JevBrowser, JevClient, Oracle
 from .model import setup_path, violations
-from .properties import exercise
+from .planning import TestPlan
+from .properties import evaluate_case, exercise
 from .report import write_report
 
 
@@ -28,11 +30,10 @@ def require_pass(result):
 
 
 class Runner:
-    def __init__(self, model, browser, oracle, url, *, settle_seconds=2, hooks=None):
+    def __init__(self, model, browser, oracle, url, *, hooks=None):
         self.model, self.browser, self.oracle, self.url = model, browser, oracle, url
         self.data = {}
         self.fields = {}
-        self.settle_seconds = settle_seconds
         self.verified_rules = set()
         self.hooks = hooks or Hooks()
         self.phase = "graph"
@@ -62,28 +63,28 @@ class Runner:
                 {**item, "description": self.fields.get(item["field"], {}).get("description", "")}
                 for item in invalid
             ]
-        deadline = time.monotonic() + self.settle_seconds
-        while True:
-            page = self.browser.observe()
-            try:
-                result = self.oracle.check(page, state, self.data, invalid)
-            except Inconclusive as error:
-                if error.result:
-                    error.result["evidence"] = {
-                        key: page.get(key) for key in ("url", "title", "text", "actions", "semantics")
-                    }
-                raise
-            result["evidence"] = {
-                key: page.get(key) for key in ("url", "title", "text", "actions", "semantics")
-            }
-            self.verified_rules.update(
-                check["rule"]
-                for check in result.get("checks", [])
-                if check.get("scope") == "global" and check["status"] == "met"
-            )
-            if result["status"] == "PASS" or time.monotonic() >= deadline:
-                return result
-            time.sleep(min(0.15, max(0, deadline - time.monotonic())))
+        # Browser actions settle before observation. A verdict is final: retrying a
+        # failure until the oracle agrees would hide defects and spend extra calls.
+        page = self.browser.observe()
+        observation = {
+            "input": deepcopy(self.data),
+            "violations": deepcopy(invalid or []),
+            "evidence": {key: page.get(key) for key in ("url", "title", "text", "actions", "semantics")},
+        }
+        try:
+            result = self.oracle.check(page, state, self.data, invalid)
+        except Inconclusive as error:
+            if error.result is None:
+                error.result = {"status": "INCONCLUSIVE", "expected": state}
+            error.result.update(observation)
+            raise
+        result.update(observation)
+        self.verified_rules.update(
+            check["rule"]
+            for check in result.get("checks", [])
+            if check.get("scope") == "global" and check["status"] == "met"
+        )
+        return result
 
     def reset(self):
         self.data = {}
@@ -163,13 +164,15 @@ def run(
     max_actions=25,
     threshold=0.85,
     headed=False,
+    keep_browser_open=False,
+    debug=False,
+    screenshots=True,
     replay=None,
     start_query="",
     browser=None,
     client=None,
     oracle=None,
     path_generator=generate_path,
-    settle_seconds=2,
     log=console,
 ):
     if type(walks) is not int or not 1 <= walks <= 100:
@@ -178,8 +181,9 @@ def run(
         raise ValueError("Unknown input exploration mode")
     if type(max_input_attempts) is not int or not 1 <= max_input_attempts <= 10000:
         raise ValueError("max_input_attempts must be 1–10000")
-    if urlparse(base_url).scheme not in {"http", "https"} or not urlparse(base_url).netloc:
-        raise ValueError("Supply an HTTP(S) application URL")
+    if keep_browser_open and not headed:
+        raise ValueError("Keeping the test browser open requires headed mode")
+    parse_http_url(base_url, "application URL")
     url = urljoin(base_url.rstrip("/") + "/", model.business.get("entry path", "/"))
     if start_query:
         parsed = urlparse(url)
@@ -192,7 +196,7 @@ def run(
     browser = browser or JevBrowser(client, max_actions=max_actions, headed=headed)
     oracle = oracle or Oracle(client, model)
     hooks = hooks or Hooks()
-    runner = Runner(model, browser, oracle, url, settle_seconds=settle_seconds, hooks=hooks)
+    runner = Runner(model, browser, oracle, url, hooks=hooks)
     report = {
         "status": "RUNNING",
         "model": model.graph["name"],
@@ -209,6 +213,24 @@ def run(
             "walks": walks,
             "graph_steps": max_steps,
             "confidence": threshold,
+            "screenshots": screenshots,
+        },
+        "graph": {
+            "start": model.graph["startElementId"],
+            "states": [
+                {"id": state["id"], "name": state["name"], **state["properties"]["business"]}
+                for state in model.states.values()
+            ],
+            "edges": [
+                {
+                    "id": edge["id"],
+                    "name": edge["name"],
+                    "source": edge["sourceVertexId"],
+                    "target": edge["targetVertexId"],
+                    "intent": edge["properties"]["business"]["intent"],
+                }
+                for edge in model.edges.values()
+            ],
         },
         "steps": [],
         "cases": [],
@@ -236,18 +258,37 @@ def run(
         "selected_campaigns": len(campaigns) if input_mode != "none" else 0,
         "walks_requested": walks,
     }
+    plan = TestPlan(report, browser, client)
+    plan_saved = False
 
     def record(entry, edge):
         entry["journey"] = edge["id"]
+        if entry.get("attempted", True):
+            plan.capture(entry)
+        if plan.active is not None:
+            entry["test_id"] = plan.active["id"]
+            plan.active["attempt_indices"].append(len(report["cases"]))
         report["cases"].append(entry)
         log(f"{entry['status']} · {entry['source']} · {json.dumps(entry['input'], ensure_ascii=False)}")
 
     input_attempts = 0
+    activity = {"phase": "run setup"}
+
+    def stopped(error):
+        report["stop"] = {**deepcopy(activity), "exception": type(error).__name__, "reason": report["error"]}
+        element = activity.get("element", {})
+        location = f" at {element['kind']} {element['id']}" if element else ""
+        log(f"Stopped during {activity['phase']}{location}.")
+        if debug:
+            report["stop"]["traceback"] = traceback.format_exc()
+            log(report["stop"]["traceback"])
 
     def attempt(edge, data, invalid):
         nonlocal input_attempts
+        activity.update(phase="property case", input=deepcopy(data), violations=deepcopy(invalid))
         if input_attempts >= max_input_attempts:
-            raise Inconclusive("The input-attempt budget was exhausted")
+            activity["phase"] = "property input budget"
+            raise Inconclusive("The input-attempt budget was exhausted", result={"attempted": False})
         input_attempts += 1
         return runner.case(edge, data, invalid)
 
@@ -255,14 +296,47 @@ def run(
     run_context.scratch = hooks.scratch
 
     try:
+        if replay:
+            activity = {"phase": "replay planning"}
+            case = json.loads(Path(replay).read_text())
+            replay_test = plan.add(
+                "property/replay",
+                "property",
+                journey=case.get("journey"),
+                input=case.get("input"),
+                phase={"kind": "replay", "source": "replay"},
+            )
+        else:
+            activity = {"phase": "property planning"}
+            plan.add_campaigns(model, campaigns.values(), mode=input_mode, cases=cases)
+            paths = []
+            report["walks"] = []
+            for walk in range(walks):
+                activity = {"phase": "graph planning", "walk": walk + 1, "seed": seed + walk}
+                path = path_generator(model, saved_model, seed + walk, max_steps)
+                paths.append(path)
+                planned = [{"id": item["id"], "kind": item["kind"]} for item in path]
+                report["walks"].append({"seed": seed + walk, "planned_path": planned})
+                plan.add_walk(model, path, walk + 1, seed + walk)
+                if walk == 0:
+                    report["planned_path"] = planned
+            selected_edges = {item["id"] for path in paths for item in path if item["kind"] == "edge"}
+            report["planning"]["unselected_edges"] = sorted(set(model.edges) - selected_edges)
+        report["planning"]["complete"] = True
+        plan.save(directory)
+        plan_saved = True
+        log(f"Planned {len(plan.tests)} tests. Inventory: {directory / 'plan.json'}")
+        activity = {"phase": "run setup"}
         hooks.fire("before_run", run_context)
         if replay:
-            case = json.loads(Path(replay).read_text())
+            activity = {"phase": "property replay"}
+            plan.begin(replay_test)
             if case.get("model_hash") != model.digest:
                 raise Inconclusive("Replay model hash differs; use the original saved model.json")
             edge = model.edges.get(case.get("journey"))
             if not edge or "data set" not in edge["properties"]["business"]:
                 raise ValueError("Replay must reference a data journey")
+            activity["element"] = {"id": edge["id"], "kind": "edge"}
             fields = model.data_sets[edge["properties"]["business"]["data set"]]
             data = case["input"]
             if (
@@ -273,33 +347,45 @@ def run(
                 )
             ):
                 raise ValueError("Replay must supply every declared business field")
-            invalid = violations(fields, data)
-            result = attempt(edge, data, invalid)
-            record({**result, "input": data, "source": "replay", "violations": invalid}, edge)
-            require_pass(result)
+            evaluate_case(
+                fields,
+                data,
+                lambda values, invalid: attempt(edge, values, invalid),
+                lambda entry: record(entry, edge),
+                source="replay",
+            )
+            plan.finish("PASS")
         else:
-            report["walks"] = []
-            for walk in range(walks):
+            for walk, path in enumerate(paths):
                 runner.walk = walk + 1
+                activity = {"phase": "graph reset", "walk": walk + 1, "seed": seed + walk}
                 with hooks.scope("walk", runner.context()):
-                    path = path_generator(model, saved_model, seed + walk, max_steps)
-                    planned = [{"id": item["id"], "kind": item["kind"]} for item in path]
-                    report["walks"].append({"seed": seed + walk, "planned_path": planned})
-                    if walk == 0:
-                        report["planned_path"] = planned
                     log(
                         f"GraphWalker walk {walk + 1}/{walks}: {len(path)} elements. "
                         "Opening the start page..."
                     )
+                    activity["phase"] = "graph reset"
                     runner.reset()
                     pending = None
-                    for item in path:
+                    for position, item in enumerate(path):
+                        plan.begin(plan.graph[walk + 1, position])
+                        activity = {
+                            "phase": "graph execution",
+                            "walk": walk + 1,
+                            "element": {
+                                key: item[key]
+                                for key in ("id", "name", "kind", "sourceVertexId", "targetVertexId")
+                                if key in item
+                            },
+                        }
                         entry = {
                             "id": item["id"],
                             "name": item["name"],
                             "kind": item["kind"],
                             "walk": walk + 1,
+                            "test_id": plan.active["id"],
                         }
+                        plan.active["step_indices"].append(len(report["steps"]))
                         report["steps"].append(entry)
                         if item["kind"] == "edge":
                             runner.transition(item)
@@ -318,9 +404,15 @@ def run(
                             if pending:
                                 seen_edges.add(pending["id"])
                                 pending = None
+                            plan.finish("PASS")
                         log(f"{entry['status']} · {item['name']}")
             runner.walk = None
             for identity, edge in campaigns.items() if input_mode != "none" else []:
+                activity = {
+                    "phase": "property campaign",
+                    "element": {"id": edge["id"], "kind": "edge"},
+                    "data_set": edge["properties"]["business"]["data set"],
+                }
                 fields = model.data_sets[edge["properties"]["business"]["data set"]]
                 exercise(
                     fields,
@@ -330,14 +422,17 @@ def run(
                     cases=cases,
                     mode=input_mode,
                     shrink=shrink,
+                    phase_scope=lambda phase, e=edge: plan.phase(e, phase),
                 )
                 suites.add(identity)
+            activity = {"phase": "coverage check"}
             coverage = model.business["coverage"]
             if len(seen_edges) / len(model.edges) * 100 < coverage["edges"]:
                 raise Inconclusive("Required verified edge coverage was not achieved")
             if len(seen_states) / len(model.states) * 100 < coverage["states"]:
                 raise Inconclusive("Required verified state coverage was not achieved")
             unverified = set(model.business["rules"]) - runner.verified_rules
+            activity = {"phase": "global requirements"}
             if unverified and hasattr(oracle, "audit_globals"):
                 audit = oracle.audit_globals(report["steps"] + report["cases"], sorted(unverified))
                 report["global_audit"] = audit
@@ -351,12 +446,16 @@ def run(
     except KeyboardInterrupt as error:
         report["status"] = "INCONCLUSIVE"
         report["error"] = "Interrupted by the user"
+        plan.fail(error)
+        stopped(error)
         run_context.error = error
         raise
-    except Exception as error:
+    except BaseException as error:
         report["status"] = "FAIL" if isinstance(error, Defect) else "INCONCLUSIVE"
         run_context.error = error
-        report["error"] = str(error)
+        report["error"] = str(error) or type(error).__name__
+        plan.fail(error)
+        stopped(error)
         if isinstance(error, Inconclusive) and error.result:
             report["failure"] = error.result
             if report["steps"] and "status" not in report["steps"][-1]:
@@ -378,7 +477,11 @@ def run(
                     + "\n"
                 )
         log(f"{report['status']}: {error}")
+        if not isinstance(error, Exception):
+            raise
     finally:
+        if not plan_saved:
+            plan.save(directory)
         report["input_attempts"] = input_attempts
         run_context.result = report
         try:
@@ -392,7 +495,7 @@ def run(
         report["decisions"] = getattr(client, "decisions", [])
         report["usage"] = client.stats.copy()
         for resource in (browser, client):
-            if resource is browser and headed and getattr(browser, "browser", browser) is not None:
+            if resource is browser and keep_browser_open and getattr(browser, "browser", browser) is not None:
                 report["browser_left_open"] = True
                 log("The last test tab has been left open for inspection.")
                 continue
@@ -402,6 +505,7 @@ def run(
                 report.setdefault("cleanup_errors", []).append(str(error))
                 if report["status"] != "FAIL":
                     report["status"] = "INCONCLUSIVE"
+                    report.setdefault("error", f"Cleanup failed: {error}")
         report["coverage"] = {
             "edges": {"verified": len(seen_edges), "total": len(model.edges), "ids": sorted(seen_edges)},
             "states": {"verified": len(seen_states), "total": len(model.states), "ids": sorted(seen_states)},
@@ -412,10 +516,12 @@ def run(
             },
         }
         report["finished"] = datetime.now(timezone.utc).isoformat()
+        plan.finalize()
         write_report(directory, report)
         log(
             f"{report['status']} · {len(seen_edges)}/{len(model.edges)} verified edges · "
-            f"{len(report['cases'])} input attempts · {client.stats['calls']} model calls"
+            f"{input_attempts} input attempts · {client.stats['calls']} model calls"
         )
         log(f"Report: {directory / 'report.html'}")
+        log(f"JUnit: {directory / 'junit.xml'}")
     return report

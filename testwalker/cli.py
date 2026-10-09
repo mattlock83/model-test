@@ -1,19 +1,20 @@
 import argparse
 import json
-import os
 import sys
 import tempfile
+import traceback
+from contextlib import nullcontext
+from functools import partial
 from pathlib import Path
 
-from dotenv import load_dotenv
-
+from .browser_runtime import connect
+from .config import RuntimeConfig, parse_http_url
 from .graphwalker import generate_path
 from .hooks import Hooks
 from .model import load_model
 from .policy import exploration_model
 from .resources import asset
 from .server import serve
-from .setup import setup
 
 
 def positive(value):
@@ -46,13 +47,14 @@ def exploration_arguments(command):
 def parser():
     root = argparse.ArgumentParser(description="Test business journeys with GraphWalker, Jev and Hypothesis")
     commands = root.add_subparsers(dest="command", required=True)
-    commands.add_parser("setup", help="Build the pinned GraphWalker execution CLI")
     validate = commands.add_parser("validate", help="Check the business specification without API calls")
     validate.add_argument("--model", type=Path, required=True)
     hosting = commands.add_parser("serve", help="Serve the demo website")
     hosting.add_argument("--port", type=int, default=4173)
     plan = commands.add_parser("plan", help="Validate and traverse a model without a browser or API calls")
-    plan.add_argument("--model", type=Path, default=asset("models/booking.json"))
+    plan.add_argument("--model", type=Path)
+    plan.add_argument("--site", choices=("booking", "feedback", "trailhead"), default="booking")
+    plan.add_argument("--config", type=Path, default=Path("testwalker.properties"))
     exploration_arguments(plan)
     for name in ("run", "demo"):
         command = commands.add_parser(
@@ -83,25 +85,110 @@ def parser():
         command.add_argument("--max-actions", type=positive, default=25)
         command.add_argument("--max-calls", type=positive, default=1000)
         command.add_argument("--threshold", type=float, default=0.85)
-        command.add_argument("--headed", action="store_true", help="Bring every new test tab to the front")
+        command.add_argument(
+            "--headed",
+            action="store_true",
+            help="Use visible Chrome and focus test tabs",
+        )
+        command.add_argument(
+            "--keep-browser-open",
+            action="store_true",
+            help="Keep the last test tab for debugging; requires --headed",
+        )
+        command.add_argument(
+            "--debug", action="store_true", help="Include error tracebacks in output and reports"
+        )
         command.add_argument("--cdp-url", help="Connect Browser Harness to this Chrome debugging URL")
         command.add_argument(
-            "--env-file", type=Path, default=Path(".env"), help="Credential file (default: ./.env)"
+            "--no-screenshots",
+            dest="screenshots",
+            action="store_false",
+            help="Disable local screenshots of executed graph checks and property attempts",
         )
         command.add_argument(
-            "--hooks", type=Path, help="Explicitly load a trusted Python lifecycle hooks file"
+            "--config",
+            type=Path,
+            default=Path("testwalker.properties"),
+            help="Properties file containing GRAPHWALKER_BIN and TYPESAFE_API_KEY",
         )
+        hooks = command.add_mutually_exclusive_group()
+        hooks.add_argument("--hooks", type=Path, help="Explicitly load a trusted Python lifecycle hooks file")
+        if name == "demo":
+            hooks.add_argument(
+                "--demo-hooks", action="store_true", help="Enable bundled Trailhead lifecycle hooks"
+            )
         command.add_argument("--output", type=Path, default=Path("artifacts"))
         command.add_argument("--replay", type=Path)
     return root
 
 
+def plan_run(model, args, path_generator):
+    with tempfile.TemporaryDirectory(prefix="testwalker-plan-") as directory:
+        path = Path(directory) / "model.json"
+        path.write_text(json.dumps(model.document))
+        print(f"Generator: {model.graph['generator']}")
+        for walk in range(args.walks):
+            print(f"Walk {walk + 1}, seed {args.seed + walk}:")
+            for element in path_generator(model, path, args.seed + walk, args.max_steps):
+                spec = element["properties"]["business"]
+                print(element["name"], "—", spec.get("intent", spec.get("description")))
+        print(f"Validated: {len(model.edges)} journeys, {len(model.data_sets)} business data sets")
+    return 0
+
+
+def live_run(model, args, config, path_generator):
+    options = {
+        key: getattr(args, key)
+        for key in (
+            "output",
+            "seed",
+            "cases",
+            "max_steps",
+            "max_calls",
+            "max_actions",
+            "threshold",
+            "headed",
+            "keep_browser_open",
+            "debug",
+            "screenshots",
+            "replay",
+            "input_mode",
+            "max_input_attempts",
+            "walks",
+        )
+    }
+    with connect(config, headed=args.headed, cdp_url=args.cdp_url, keep_browser_open=args.keep_browser_open):
+        # Browser Harness captures the named connection at import time.
+        # Establish it before importing Jev, the engine or application hooks.
+        from .engine import run
+        from .jev import JevBrowser, JevClient
+
+        options.update(hooks=Hooks.load(args.hooks), shrink=not args.no_shrink, path_generator=path_generator)
+        client = JevClient(
+            api_key=config.api_key, model=config.model, max_calls=args.max_calls, threshold=args.threshold
+        )
+        browser = JevBrowser(
+            client, max_actions=args.max_actions, headed=args.headed, text_config=config.text
+        )
+        try:
+            hosting = serve() if args.command == "demo" else nullcontext(args.url)
+            with hosting as url:
+                report = run(
+                    model,
+                    url,
+                    start_query="bug=seats" if getattr(args, "bug", False) else "",
+                    client=client,
+                    browser=browser,
+                    **options,
+                )
+        finally:
+            client.close()
+    return {"PASS": 0, "FAIL": 1, "INCONCLUSIVE": 2}[report["status"]]
+
+
 def main(argv=None):
     args = parser().parse_args(argv)
     try:
-        if args.command == "setup":
-            setup()
-            return 0
         if args.command == "serve":
             with serve(args.port) as url:
                 print(f"Demo site: {url}", flush=True)
@@ -115,6 +202,8 @@ def main(argv=None):
                 f"{len(model.data_sets)} data sets; {model.digest}"
             )
             return 0
+        config = RuntimeConfig.load(args.config, live=args.command != "plan")
+        path_generator = partial(generate_path, binary=config.graphwalker)
         if args.walks > 100:
             raise ValueError("walks must be 1–100")
         if getattr(args, "replay", None) and any(
@@ -128,63 +217,26 @@ def main(argv=None):
             state_coverage=args.state_coverage,
         )
         if args.command == "plan":
-            with tempfile.TemporaryDirectory(prefix="model-test-plan-") as directory:
-                path = Path(directory) / "model.json"
-                path.write_text(json.dumps(model.document))
-                print(f"Generator: {model.graph['generator']}")
-                for walk in range(args.walks):
-                    print(f"Walk {walk + 1}, seed {args.seed + walk}:")
-                    for element in generate_path(model, path, args.seed + walk, args.max_steps):
-                        spec = element["properties"]["business"]
-                        print(element["name"], "—", spec.get("intent", spec.get("description")))
-                print(f"Validated: {len(model.edges)} journeys, {len(model.data_sets)} business data sets")
-            return 0
-        load_dotenv(args.env_file)
-        if not os.environ.get("TYPESAFE_API_KEY"):
-            raise ValueError(
-                "Live navigation needs TYPESAFE_API_KEY in the environment or --env-file (default: ./.env). "
-                "Use 'model-test plan' to inspect a model without API credentials."
-            )
+            return plan_run(model, args, path_generator)
         if args.cases > 200 or not 0.5 < args.threshold <= 1:
             raise ValueError("cases must be 1–200; confidence must be above 0.5 and at most 1")
-        if args.cdp_url:
-            os.environ["BU_CDP_URL"] = args.cdp_url
-            # Browser Harness daemons are named: isolate distinct endpoints.
-            import hashlib
-
-            os.environ["BU_NAME"] = "model-test-" + hashlib.sha256(args.cdp_url.encode()).hexdigest()[:12]
-        from .engine import run
-
-        options = {
-            key: getattr(args, key)
-            for key in (
-                "output",
-                "seed",
-                "cases",
-                "max_steps",
-                "max_calls",
-                "max_actions",
-                "threshold",
-                "headed",
-                "replay",
-                "input_mode",
-                "max_input_attempts",
-                "walks",
-            )
-        }
-        options.update(hooks=Hooks.load(args.hooks), shrink=not args.no_shrink)
-        if args.command == "demo":
-            if args.bug and args.site != "booking":
-                raise ValueError("The injected defect belongs to the booking demo")
-            with serve() as url:
-                report = run(model, url, start_query="bug=seats" if args.bug else "", **options)
-        else:
-            report = run(model, args.url, **options)
-        return {"PASS": 0, "FAIL": 1, "INCONCLUSIVE": 2}[report["status"]]
+        if args.keep_browser_open and not args.headed:
+            raise ValueError("--keep-browser-open requires --headed")
+        if args.command == "run":
+            parse_http_url(args.url, "application URL")
+        if args.command == "demo" and args.bug and args.site != "booking":
+            raise ValueError("The injected defect belongs to the booking demo")
+        if getattr(args, "demo_hooks", False):
+            if args.site != "trailhead":
+                raise ValueError("Bundled lifecycle hooks are provided for --site trailhead")
+            args.hooks = asset("examples/trailhead/hooks.py")
+        return live_run(model, args, config, path_generator)
     except KeyboardInterrupt:
         return 130
     except Exception as error:
         print(f"INCONCLUSIVE: {error}", file=sys.stderr)
+        if getattr(args, "debug", False):
+            traceback.print_exc()
         return 2
 
 

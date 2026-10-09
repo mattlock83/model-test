@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Testwalker — __TITLE__</title>
+    <style>
+      __VIEWER_STYLE__
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">TESTWALKER / EXECUTION REPORT</div>
+      <div class="topline">
+        <h1 id="model-title">__TITLE__</h1>
+        <span id="run-status" class="badge">__STATUS__</span>
+      </div>
+      <div id="run-meta" class="muted"></div>
+    </header>
+    <div id="metrics" class="metrics"></div>
+    <main>
+      <div id="stop" class="notice" hidden></div>
+      <div class="layout">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Business graph</h2>
+            <button id="reset-focus">Clear graph filter</button>
+          </div>
+          <div class="graph-toolbar">
+            <span id="graph-count"></span
+            ><span class="zoom-controls"
+              ><button
+                id="zoom-out"
+                class="small-button"
+                aria-label="Zoom graph out"
+              >
+                −</button
+              ><button id="zoom-fit" class="small-button">Fit</button
+              ><button
+                id="zoom-in"
+                class="small-button"
+                aria-label="Zoom graph in"
+              >
+                +
+              </button></span
+            ><label
+              ><input type="checkbox" id="all-edges" />All connections</label
+            >
+          </div>
+          <div id="graph-viewport">
+            <svg
+              id="graph"
+              role="img"
+              aria-label="Business states and navigation journeys"
+            ></svg>
+          </div>
+          <div class="legend">
+            <span><i class="dot" style="background:var(--pass)"></i>Passed</span
+            ><span
+              ><i class="dot" style="background:var(--fail)"></i>Failed</span
+            ><span
+              ><i class="dot" style="background:var(--error)"></i
+              >Inconclusive</span
+            ><span
+              ><i class="dot" style="background:var(--skip)"></i>Skipped</span
+            ><span
+              ><i class="dot" style="background:#d1dce2"></i>Unselected</span
+            >
+          </div>
+          <div id="graph-note" class="graph-note">
+            Select a state to filter cases. Select a connection to inspect its
+            journeys.
+          </div>
+        </section>
+        <div>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Cases &amp; results</h2>
+              <span id="case-count" class="muted"></span>
+            </div>
+            <div class="filters">
+              <input
+                id="search"
+                type="search"
+                placeholder="Find a journey, field or case…"
+                aria-label="Search cases"
+              /><select id="status-filter" aria-label="Filter outcome">
+                <option value="">All outcomes</option>
+                <option>FAIL</option>
+                <option>INCONCLUSIVE</option>
+                <option>SKIPPED</option>
+                <option>PASS</option></select
+              ><select id="kind-filter" aria-label="Filter case type">
+                <option value="">All cases</option>
+                <option value="graph">Graph checks</option>
+                <option value="property">Property tests</option>
+              </select>
+            </div>
+            <div id="case-list"></div>
+          </section>
+          <section class="panel inspector">
+            <div class="panel-head">
+              <h2>Case inspection</h2>
+              <span id="detail-status" class="badge"></span>
+            </div>
+            <div id="detail" class="panel-body" aria-live="polite"></div>
+          </section>
+        </div>
+      </div>
+      <details class="run-evidence">
+        <summary>Where execution stopped</summary>
+        <pre id="stop-detail"></pre>
+      </details>
+      <details class="run-evidence">
+        <summary>Run limits, coverage &amp; planning</summary>
+        <pre id="run-detail"></pre>
+      </details>
+      <details class="run-evidence">
+        <summary>Full execution evidence</summary>
+        <pre>__ESCAPED_EVIDENCE__</pre>
+      </details>
+      <footer>
+        <nav>
+          <a href="report.json">Report JSON</a
+          ><a href="model.json">Business model</a
+          ><a href="plan.json">Planned inventory</a
+          ><a href="junit.xml">JUnit XML</a
+          ><a id="replay-link" href="replay.json" hidden>Replay input</a>
+        </nav>
+        <p id="scope-note">__SCOPE_NOTE__</p>
+        <p>
+          Graph paths and boundary inputs are planned in advance. Hypothesis
+          draws and shrinking happen during execution. Screenshots show the
+          captured viewport; skipped cases have no screenshot.
+        </p>
+      </footer>
+    </main>
+    <noscript
+      >Enable JavaScript to explore the graph and cases. The report JSON and
+      full execution evidence remain available above.</noscript
+    >
+    <script id="run-data" type="application/json">
+      __REPORT_JSON__
+    </script>
+    <script>
+      __VIEWER_SCRIPT__
+    </script>
+  </body>
+</html>

@@ -6,15 +6,15 @@ The exported [GraphWalker model](../../models/trailhead.json) is the maintained 
 
 ## Start with the short scenario
 
-From the repository root, with your Jev key in `.env`:
+After installing the package, with GraphWalker and your Jev key in `testwalker.properties`:
 
 ```bash
-./run-demo.sh --site trailhead --hooks examples/trailhead/hooks.py \
+testwalker demo --site trailhead --demo-hooks --headed \
   --generator predefined_path --edge-coverage 0 --state-coverage 0 \
   --input-mode none --max-steps 1000 --max-calls 250
 ```
 
-The visible Chrome launcher performs the existing dependency, GraphWalker and isolated-browser setup. The predefined route visits **14 distinct journeys and 14 states** in 29 graph elements:
+The Python CLI starts or reuses isolated Chrome and serves the bundled example. GraphWalker is the executable configured in your properties file; dependencies are installed with the package. The predefined route visits **14 distinct journeys and 14 states** in 29 graph elements:
 
 1. Begin planning an adventure and select Marina pier using the custom pickup hook.
 2. Reject an oversized party, correct it, review, and finally confirm the booking.
@@ -27,17 +27,17 @@ This is a deliberately scoped smoke test: the zero coverage targets permit that 
 
 ```bash
 # Every graph journey, without separate property campaigns.
-./run-demo.sh --site trailhead --hooks examples/trailhead/hooks.py \
+testwalker demo --site trailhead --demo-hooks --headed \
   --generator new_york_street_sweeper --input-mode none \
   --max-steps 1000 --max-calls 2500
 
 # Full graph exploration plus small generated campaigns.
-./run-demo.sh --site trailhead --hooks examples/trailhead/hooks.py \
+testwalker demo --site trailhead --demo-hooks --headed \
   --input-mode generated --cases 1 --max-input-attempts 200 \
   --max-steps 1000 --max-calls 4000
 
 # Add explicit boundaries and more generated cases; shrinking is enabled by default.
-./run-demo.sh --site trailhead --hooks examples/trailhead/hooks.py \
+testwalker demo --site trailhead --demo-hooks --headed \
   --input-mode all --cases 5 --max-input-attempts 1000 \
   --max-steps 1000 --max-calls 8000
 ```
@@ -47,14 +47,14 @@ These call limits are caps, not predicted usage or prices. The larger scope is s
 Inspect routes without an API key or browser:
 
 ```bash
-uv run model-test validate --model models/trailhead.json
-uv run model-test plan --model models/trailhead.json --max-steps 1000
-uv run model-test plan --model models/trailhead.json --generator quick_random --max-steps 1000
-uv run model-test plan --model models/trailhead.json --generator weighted_random \
+testwalker validate --model models/trailhead.json # Source checkout or your exported model
+testwalker plan --site trailhead --max-steps 1000
+testwalker plan --site trailhead --generator quick_random --max-steps 1000
+testwalker plan --site trailhead --generator weighted_random \
   --edge-coverage 20 --state-coverage 50 --max-steps 1000
-uv run model-test plan --model models/trailhead.json \
+testwalker plan --site trailhead \
   --generator 'a_star(reached_vertex(cancellation_done))' --edge-coverage 0 --state-coverage 0
-uv run model-test plan --model models/trailhead.json \
+testwalker plan --site trailhead \
   --generator 'quick_random(edge_coverage(100)) a_star(reached_vertex(home))' --max-steps 1000
 ```
 
@@ -106,12 +106,12 @@ Run the same smoke command with one of these prefixes:
 
 ```bash
 # UI still says confirmed, but no inventory is reserved: the reservation hook must fail.
-TRAILHEAD_DEMO_BUG=inventory ./run-demo.sh --site trailhead --hooks examples/trailhead/hooks.py \
+TRAILHEAD_DEMO_BUG=inventory testwalker demo --site trailhead --demo-hooks --headed \
   --generator predefined_path --edge-coverage 0 --state-coverage 0 \
   --input-mode none --max-steps 1000 --max-calls 250
 
 # UI still says refunded, but the backend creates a duplicate refund: the refund hook must fail.
-TRAILHEAD_DEMO_BUG=refund ./run-demo.sh --site trailhead --hooks examples/trailhead/hooks.py \
+TRAILHEAD_DEMO_BUG=refund testwalker demo --site trailhead --demo-hooks --headed \
   --generator predefined_path --edge-coverage 0 --state-coverage 0 \
   --input-mode none --max-steps 1000 --max-calls 250
 ```
@@ -121,15 +121,15 @@ The environment flag is consumed by the fixture hook on each reset. It does not 
 ## Preview or run against a separately hosted demo
 
 ```bash
-uv run model-test serve --port 4184
+testwalker serve --port 4184
 # Open http://127.0.0.1:4184/trailhead/
 ```
 
-In another terminal, with Chrome connected as described in the main README:
+From a source checkout, in another terminal, with the properties file configured as described in the main README:
 
 ```bash
-uv run model-test run --model models/trailhead.json --url http://127.0.0.1:4184 \
-  --hooks examples/trailhead/hooks.py --headed --cdp-url http://127.0.0.1:9222 \
+testwalker run --model models/trailhead.json --url http://127.0.0.1:4184 \
+  --hooks examples/trailhead/hooks.py --headed \
   --generator predefined_path --edge-coverage 0 --state-coverage 0 \
   --input-mode none --max-calls 250
 ```

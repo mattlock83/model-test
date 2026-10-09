@@ -6,6 +6,7 @@ import json
 import math
 import re
 from dataclasses import dataclass
+from decimal import Decimal
 from pathlib import Path
 
 
@@ -62,14 +63,15 @@ def violations(fields, data):
             if not decimal or isinstance(value, bool):
                 broken.append("number required")
             else:
-                number = float(value)
-                if not math.isfinite(number):
+                # Compare the supplied decimal text exactly at business boundaries.
+                number = Decimal(str(value))
+                if not number.is_finite():
                     broken.append("finite number required")
                 elif field["type"] == "whole number" and not re.fullmatch(r"[+-]?\d+", str(value)):
                     broken.append("whole number required")
-                if number < field.get("minimum", -math.inf):
+                if "minimum" in field and number < Decimal(str(field["minimum"])):
                     broken.append("below minimum")
-                if number > field.get("maximum", math.inf):
+                if "maximum" in field and number > Decimal(str(field["maximum"])):
                     broken.append("above maximum")
         if broken:
             result.append({"field": name, "violations": broken})

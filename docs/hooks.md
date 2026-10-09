@@ -3,8 +3,8 @@
 Most tests run from the business model alone. When needed, explicitly load a trusted local Python file:
 
 ```bash
-model-test run --model booking.json --url http://localhost:3000 \
-  --env-file .env --hooks hooks.py --headed
+testwalker run --model booking.json --url http://localhost:3000 \
+  --config testwalker.properties --hooks hooks.py --headed
 ```
 
 The model cannot name files to import or supply executable hook code. Loading the file executes normal Python with your process permissions. Credentials for backend APIs belong in environment variables, not the graph. Do not print secrets in hooks: their error messages can appear in the report.

@@ -2,8 +2,8 @@ import copy
 
 import pytest
 
-from model_test.model import load_model, setup_path, validate_model, violations
-from model_test.resources import ROOT
+from testwalker.model import load_model, setup_path, validate_model, violations
+from testwalker.resources import ROOT
 
 
 @pytest.mark.parametrize("name", ["booking", "feedback"])
@@ -73,3 +73,10 @@ def test_expanded_demo_models_menu_from_every_distinct_state():
             assert (source, destination) in transitions
     assert ("workshops", "details") in transitions
     assert len(model.states) == 8 and len(model.edges) == 35
+
+
+def test_decimal_boundaries_do_not_round_an_invalid_input_into_range():
+    fields = {"Amount": {"type": "number", "minimum": 0.1, "maximum": 0.1}}
+    assert not violations(fields, {"Amount": "0.1000000000000000000000"})
+    assert violations(fields, {"Amount": "0.1000000000000000000001"})[0]["violations"] == ["above maximum"]
+    assert violations(fields, {"Amount": "0.0999999999999999999999"})[0]["violations"] == ["below minimum"]

@@ -151,7 +151,7 @@ Author models separately in GraphWalker, through its editor or MCP. This framewo
 3. Write global and state-specific business rules in plain language.
 4. Define form data meaning, permitted ranges and valid examples.
 5. Connect submission journeys to acceptance and rejection states.
-6. Run `uv run model-test plan --model your-model.json` to validate the model and inspect GraphWalker's route.
+6. Run `testwalker plan --model your-model.json` to validate the model and inspect GraphWalker's route.
 7. Run against the application with a Jev key; inspect inconclusive evidence and refine ambiguous business descriptions.
 
 You still maintain a specification as requirements change. The model avoids application implementation details; the framework owns all browser interaction code. It cannot infer missing requirements or guarantee semantic judgments from an underspecified graph. Backend reset procedures and deterministic external checks can be supplied through optional [Python lifecycle hooks](hooks.md), explicitly loaded with `--hooks`. Hooks are never embedded in or loaded by the model.

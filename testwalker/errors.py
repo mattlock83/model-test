@@ -6,6 +6,10 @@ class Inconclusive(RuntimeError):
         self.result = result
 
 
+class UncertainDecision(Inconclusive):
+    """A well-formed provider answer did not meet the confidence threshold."""
+
+
 class Defect(AssertionError):
     """Observed behavior violates a modeled requirement."""
 

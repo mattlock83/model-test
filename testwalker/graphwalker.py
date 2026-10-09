@@ -1,13 +1,8 @@
 """Seeded paths from the actual Rust GraphWalker CLI, with verified graph identity."""
 
 import json
-import os
 import subprocess
 from pathlib import Path
-
-from .resources import native_binary
-
-DEFAULT_BINARY = native_binary()
 
 
 def parse_path(model, output, max_steps=200):
@@ -52,20 +47,21 @@ def parse_path(model, output, max_steps=200):
     return path
 
 
-def generate_path(model, model_path, seed=42, max_steps=200):
+def generate_path(model, model_path, seed=42, max_steps=200, *, binary=None):
     if type(seed) is not int or not 1 <= seed <= 2147483647 or not 1 <= max_steps <= 10000:
         raise ValueError("Use a positive seed and a step budget from 1 to 10000")
-    binary = os.environ.get("GRAPHWALKER_BIN", str(native_binary()))
+    if binary is None:
+        raise ValueError("Supply the GraphWalker executable from the properties file")
     try:
         result = subprocess.run(
-            [binary, "offline", "-g", str(Path(model_path).resolve()), "-s", str(seed), "-o"],
+            [str(binary), "offline", "-g", str(Path(model_path).resolve()), "-s", str(seed), "-o"],
             capture_output=True,
             text=True,
             timeout=60,
             check=True,
         )
     except FileNotFoundError as error:
-        raise ValueError("GraphWalker is missing. Run: uv run model-test setup") from error
+        raise ValueError("The configured GraphWalker executable is missing; check GRAPHWALKER_BIN") from error
     except subprocess.CalledProcessError as error:
         raise ValueError(f"GraphWalker rejected the model: {error.stderr[-2000:]}") from error
     if len(result.stdout) > 4_000_000:

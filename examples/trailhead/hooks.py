@@ -12,7 +12,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 from urllib.request import ProxyHandler, Request, build_opener
 
-from model_test.errors import Defect, Inconclusive
+from testwalker.errors import Defect, Inconclusive
 
 
 def api(ctx, path="state", body=None):

@@ -1,4 +1,4 @@
-# model-test
+# testwalker
 
 A Python CLI framework that tests a website from a **GraphWalker business model**. A business analyst describes states, journeys, expected outcomes and input rules. The framework discovers the controls at runtime using [Jev Ultrafast](https://github.com/browser-use/jev-ultrafast).
 
@@ -15,31 +15,57 @@ The property-testing layer now uses Python's Hypothesis directly. [Hegel is buil
 
 Author and export your model in GraphWalker independently, using its editor or MCP with your preferred assistant. **This package does not create or edit graphs and does not expose an authoring MCP.** It consumes one exported GraphWalker JSON model with the [business specification](docs/model-format.md): state descriptions, journey intents, expected outcomes and input constraints. A bare navigation graph cannot supply missing business expectations.
 
-Install from this checkout (Python 3.12+, Chrome, and Rust 1.88+ for the native GraphWalker build):
+Install the local package with Python 3.12+ and [uv](https://docs.astral.sh/uv/getting-started/installation/):
 
 ```bash
+# From this repository:
 uv tool install .
-model-test setup
-model-test validate --model /path/to/exported-model.json
-model-test plan --model /path/to/exported-model.json
+# Or build and install a wheel locally:
+uv build --out-dir build
+uv tool install ./build/testwalker-3.2.0-py3-none-any.whl
+testwalker --help
 ```
 
-You can also build a wheel with `uv build --out-dir build`, then install that wheel. Models, demo HTML and the native dependency lock ship inside the package. Installed native tools live under `~/.cache/model-test`; set `MODEL_TEST_HOME` to override this. Source checkouts retain `.tools`. You can supply an existing compatible native CLI using `GRAPHWALKER_BIN`.
+Chrome and a compatible **GraphWalker Rust executable** are external prerequisites. Install GraphWalker independently using its [installation guide](https://graphwalker.github.io/graphwalker-rs/getting-started.html). The package does not download or build it. Rust is only needed if you choose to build that executable yourself. The repository's [native dependency reference](graphwalker.lock.json) records the revision used for its integration checks. Jev's Git dependency is pinned in the package; source development dependencies are locked in `uv.lock`.
 
-Put `TYPESAFE_API_KEY=your_key` in your working directory's `.env`, or export it in the environment. Existing environment values take precedence. Run against your own application:
+Models, demo HTML, Trailhead hooks and a sample configuration ship inside the wheel. The installed `testwalker` CLI works from any directory. `python -m testwalker` is an equivalent entry point. No shell launcher is required.
+
+Create `testwalker.properties` in your working directory, or copy [testwalker.properties.example](testwalker.properties.example) and edit it:
+
+```properties
+GRAPHWALKER_BIN=/absolute/path/to/graphwalker
+TYPESAFE_API_KEY=your_jev_key
+```
+
+Both settings come from this file; exported environment variables do not replace them. `GRAPHWALKER_BIN` must be an executable file path, not a shell command. Relative paths resolve from the properties file's directory; quote paths containing spaces. This local file is ignored by Git. Use `--config /path/to/settings.properties` for another location.
+
+| Property | Meaning |
+| --- | --- |
+| `GRAPHWALKER_BIN` | Required for `plan`, `run` and `demo`. Path to the GraphWalker Rust CLI. |
+| `TYPESAFE_API_KEY` | Required for live `run` and `demo`. Your Jev key. |
+| `TYPESAFE_MODEL` | Optional decision model; default `jev-latest`. |
+| `CDP_URL` | Optional existing Chrome debugging endpoint. When supplied it must already be running. |
+| `CHROME_EXECUTABLE` | Optional Chrome executable path; otherwise the CLI locates Chrome. |
+| `CHROME_PROFILE_DIR` | Optional isolated test profile; default `~/.cache/testwalker/chrome-PORT`. |
+| `CHROME_DEBUG_PORT` | Optional local debugging port; default `9222`. |
+| `TEXT_MODEL_API_KEY`, `TEXT_MODEL_BASE_URL`, `TEXT_MODEL` | Optional text helper for undeclared free-text journeys. Bundled demos do not need it. |
+
+Inspect your model and run against your application:
 
 ```bash
-model-test run \
+testwalker validate --model /path/to/exported-model.json
+testwalker plan --model /path/to/exported-model.json --config testwalker.properties
+testwalker run \
   --model /path/to/exported-model.json \
   --url http://localhost:3000 \
-  --env-file .env \
+  --config testwalker.properties \
   --generator quick_random --edge-coverage 100 --state-coverage 100 \
   --walks 2 --max-steps 300 \
   --input-mode all --cases 5 --max-input-attempts 300 \
   --max-calls 1000 --headed
 ```
 
-Chrome connects through Browser Harness. For a dedicated Chrome debugging endpoint, add `--cdp-url http://127.0.0.1:9222`; the macOS profile instructions below show how to start it. `--headed` focuses the owned tabs and retains the last one; it does not itself launch Chrome or enable debugging. No API credential is stored in the model or report by the framework.
+The CLI starts Chrome with a dedicated profile and waits for its debugging endpoint. `--headed` opens visible Chrome and focuses new test tabs. A browser started by the CLI is stopped afterward, in both visible and headless modes, including failed or interrupted runs. Add `--headed --keep-browser-open` to explicitly retain the test tab and browser for debugging. An existing ready endpoint is reused and never terminated. `--cdp-url` overrides the configured endpoint. Credentials are not written to the graph or report. `validate` and `serve` do not need configuration; `plan` needs only GraphWalker, without a browser or API key.
 
 The execution components are independent of model authoring:
 
@@ -83,7 +109,7 @@ Hooks can reset a backend, seed test data, call APIs, or make deterministic asse
 
 ## GraphWalker walk modes
 
-All seven native modes are available through `--generator`, or through the generator already in the exported model. The framework passes expressions to the pinned native GraphWalker CLI. See [GraphWalker’s generator reference](https://graphwalker.github.io/graphwalker-rs/generators.html).
+All seven native modes are available through `--generator`, or through the generator already in the exported model. The framework passes expressions to the configured native GraphWalker CLI. See [GraphWalker’s generator reference](https://graphwalker.github.io/graphwalker-rs/generators.html).
 
 | Mode | Usage and constraints |
 | --- | --- |
@@ -99,14 +125,14 @@ Native stop conditions and chained generators are accepted. For example:
 
 ```bash
 # Full exploration, then return to the home state.
-uv run model-test plan --generator 'quick_random(edge_coverage(100)) a_star(reached_vertex(home))'
+testwalker plan --generator 'quick_random(edge_coverage(100)) a_star(reached_vertex(home))'
 
 # Inspect a targeted route instead of demanding full coverage.
-uv run model-test plan --generator 'a_star(reached_vertex(visit))' \
+testwalker plan --generator 'a_star(reached_vertex(visit))' \
   --edge-coverage 0 --state-coverage 0
 
 # Efficient complete edge coverage for this demo.
-./run-demo.sh --generator new_york_street_sweeper --input-mode none
+testwalker demo --headed --generator new_york_street_sweeper --input-mode none
 ```
 
 Coverage is an independent verification gate. A short A* or predefined route cannot claim full graph coverage; choose appropriate targets explicitly. During a live run, global business requirements must still be evidenced, even when the route is short. Native failures (such as a non-Eulerian graph) remain visible as inconclusive results. Guards, executable model actions and multiple linked models remain outside this framework’s business-model contract.
@@ -115,40 +141,16 @@ With seed 42, the expanded demo plans **149 elements with quick_random** and **1
 
 ## Run the demo
 
-From this repository, with [uv](https://docs.astral.sh/uv/getting-started/installation/), Chrome and Rust 1.88+ installed:
+After installing the package and creating the properties file:
 
 ```bash
-uv sync
-uv run model-test setup
-# Create .env and add TYPESAFE_API_KEY=your_key.
-uv run browser-harness --doctor
-uv run model-test demo
+testwalker demo --headed
+testwalker demo --site feedback --headed
+testwalker demo --bug --headed
+testwalker demo --seed 42 --cases 3 --max-calls 1000 --headed
 ```
 
-On macOS, after setting `TYPESAFE_API_KEY` in `.env`, run everything with:
-
-```bash
-./run-demo.sh
-# Demo options are forwarded:
-./run-demo.sh --site feedback
-./run-demo.sh --bug
-```
-
-The script synchronizes the locked Python dependencies, builds GraphWalker if needed, opens a separate visible Chrome profile, waits for its debugging endpoint and runs the demo with `--headed`. Each new property-test tab comes to the front. It can be invoked from any directory and keeps Chrome open afterward. Override its port with `MODEL_TEST_CHROME_PORT=9333 ./run-demo.sh`. API/provider setup remains in `.env`.
-
-The demo starts its own local HTML server and opens an owned Chrome tab. Follow Browser Harness's instructions to connect Chrome and enable remote debugging if prompted. It uses Jev's browser integration; Playwright MCP and OpenAI Decisions are removed.
-
-Setup builds the pinned official Rust CLI from [graphwalker.lock.json](graphwalker.lock.json), following the [GraphWalker installation guide](https://graphwalker.github.io/graphwalker-rs/getting-started.html). Skip setup if you set `GRAPHWALKER_BIN` to an existing compatible CLI. Jev's exact Git revision and Python dependencies are locked in `uv.lock`.
-
-**A TypeSafe Jev key is required for browser testing. There is no local-only execution mode.** The bundled demos do not require an OpenAI key or a separate text-generation key: generated business values are typed literally. For other journeys that need free text without a declared data set, the optional `TEXT_MODEL_*` variables configure Jev's small text-helper pattern.
-
-Other runs:
-
-```bash
-uv run model-test demo --site feedback
-uv run model-test demo --bug
-uv run model-test demo --seed 42 --cases 3 --max-calls 1000
-```
+The demo starts its own local HTML server and opens a test tab in isolated Chrome. **A Jev key is required for browser testing; there is no local-only execution mode.** No OpenAI key is required. To work directly from this checkout, use `uv sync` once and prefix commands with `uv run`, for example `uv run testwalker demo --headed`.
 
 The booking demo now has **Home, Workshops, Our studio and Visit** pages with a shared menu, plus the booking, review, rejection and confirmation states. The selector-free business model contains **8 states and 35 journeys**, including navigation away from each booking state, links between information pages, and booking from the catalogue. The enquiry demo remains a separate small fixture.
 
@@ -161,29 +163,16 @@ The [Trailhead example](examples/trailhead/README.md) adds **20 states, 148 jour
 Start with its short predefined scenario in visible Chrome:
 
 ```bash
-./run-demo.sh --site trailhead --hooks examples/trailhead/hooks.py \
+testwalker demo --site trailhead --demo-hooks --headed \
   --generator predefined_path --edge-coverage 0 --state-coverage 0 \
   --input-mode none --max-steps 1000 --max-calls 250
 ```
 
 This visits 14 journeys and 14 states, including explicit invalid examples and both backend hook scenarios. For full coverage, use `--generator new_york_street_sweeper --edge-coverage 100 --state-coverage 100 --max-steps 1000 --max-calls 2500`; enable property campaigns separately with `--input-mode generated` or `all`. The example guide covers budgets, weighted exploration, targeted A*, chained routes, and injected inventory/refund defects.
 
-## macOS Chrome profile permission error
+## Chrome connections
 
-If Browser Harness reports `Operation not permitted` for Chrome's `DevToolsActivePort`, launch a separate visible Chrome with a dedicated profile and connect by URL. This uses Browser Harness's [documented isolated-profile connection](https://github.com/browser-use/browser-harness/blob/main/skills/browser-harness/references/install.md).
-
-From the repository directory:
-
-```bash
-open -na "Google Chrome" --args \
-  --user-data-dir="$PWD/.tools/chrome-profile" \
-  --remote-debugging-port=9222 \
-  --no-first-run --no-default-browser-check
-
-BU_NAME=model-test BU_CDP_URL=http://127.0.0.1:9222 uv run model-test demo
-```
-
-Wait for the new Chrome window before running the second command. This test profile is ignored by Git. Use `uv run model-test demo --headed` to bring each new test tab to the front. Keep the separate Chrome instance open while testing. The named connection avoids reusing the harness daemon for your everyday browser.
+The CLI's dedicated profile avoids reading the everyday Chrome profile's `DevToolsActivePort`. To choose another debug port or profile, set `CHROME_DEBUG_PORT` or `CHROME_PROFILE_DIR` in the properties file. Remove `CDP_URL` when you want the CLI to start Chrome automatically. When connecting to a browser you manage, supply `CDP_URL` or `--cdp-url`; the framework checks readiness and reports an unavailable endpoint instead of launching a replacement.
 
 ## What the analyst maintains
 
@@ -221,7 +210,7 @@ The analyst maintains this business specification; the framework supplies traver
 To test a different site:
 
 ```bash
-uv run model-test run --model my-model.json --url http://localhost:3000
+testwalker run --model my-model.json --url http://localhost:3000
 ```
 
 Start your application separately. The model's `entry path` is relative to the supplied site's origin. No application-specific Python functions are registered.
@@ -254,15 +243,73 @@ The default confidence threshold is **0.85**, maximum model calls **1000**, and 
 
 `--cases` defaults to **3 generated cases per field plus 3 combined cases**, per distinct data journey. With the default `--input-mode all`, explicit boundaries, graph checkpoints, setup and shrinking add work. Use `--max-calls` to cap spending; hitting it is inconclusive, not a partial pass.
 
-Every started run saves `artifacts/<timestamp>/report.html`, `report.json` and the exact `model.json`. Reports include verified coverage, observed browser evidence, rule judgments, raw Jev decision requests/responses, action trace and usage. Property failures also save `replay.json`. Unresolved state requirements name the exact rule and retain its answer in the report. In headed runs the last test tab remains open for inspection; the demo server stops when execution ends. Initial configuration/model errors can exit before a report is created. Screenshots are not recorded or sent; visible text and structured controls are sent to Jev. Artifacts are ignored by Git.
+Every started run saves `artifacts/<timestamp>/report.html`, `report.json` and the exact `model.json`. Reports include verified coverage, observed browser evidence, rule judgments, raw Jev decision requests/responses, action trace and usage. Property failures also save `replay.json`. Unresolved state requirements name the exact rule and retain its answer in the report. The test tab closes when execution ends unless `--headed --keep-browser-open` is supplied; the demo server stops when execution ends. Initial configuration/model errors can exit before a report is created. Viewport screenshots are saved locally after each executed graph check and property attempt. They are never sent to Jev; its decisions use visible text and structured controls. Use `--no-screenshots` to disable image capture. Artifacts are ignored by Git.
+
+## Visual report and screenshots
+
+Open the `report.html` path printed when the run finishes. It is a local viewer with embedded data and no external libraries or server requirement. Keep its `screenshots/` directory beside it when copying or uploading the report.
+
+- Select a graph state or connection to filter its related tests. Toggle **All connections** for the complete graph; the selected journey is highlighted. Use **+ / −** to zoom and scroll the graph, or **Fit** to restore the overview. Graph colors summarize graph checks, while property outcomes remain separate.
+- Search cases and filter by outcome or graph/property type. Select a case to see its intended behavior, exact inputs, observed checkpoints, rules, actions and Jev decisions.
+- Each graph check captures its final viewport, including a failed or inconclusive stop when the tab remains available. Each executed property attempt captures separately, including reproduction and shrinking attempts. Use the **Input attempt** selector to inspect them; a generation phase defaults to its final recorded attempt.
+- Click an image to open it at full size. Skipped cases and inputs rejected by the attempt budget have no screenshot. Capture failures are shown without changing the test verdict. A screenshot reflects the page after the check and its hooks, rather than an atomic copy of the earlier semantic observation.
+
+PNG images are stored under `screenshots/` and referenced in JSON and JUnit evidence. Capture adds browser/disk work but no Jev requests. `--no-screenshots` disables capture while retaining the graph and results viewer. Existing historical reports do not acquire screenshots retroactively; the new viewer and images are produced by subsequent runs.
+
+The selected seeded graph paths, nominal graph inputs and explicit boundary inputs are computed before browser actions. Hypothesis phases are planned beforehand, but their actual generated inputs and shrinking are determined during execution.
+
+## JUnit and planned test inventory
+
+Every started run automatically produces `junit.xml` beside `report.html` and `report.json`; the CLI prints its path. CI can collect `ci-results/**/junit.xml` when the run uses `--output ci-results`. Keep the neighboring HTML, JSON, model, inventory and any replay artifact with the XML for investigation.
+
+Before run hooks or browser actions, Testwalker generates **all selected seeded graph walks** and saves `plan.json`. This immutable inventory lists the selected tests; `report.json` records their final outcomes. Planning does not call Jev. If native planning fails, the report identifies the failing walk and marks the available inventory incomplete; it cannot invent a route for a walk GraphWalker could not generate.
+
+| Planned test | How its count is determined |
+| --- | --- |
+| Graph starting state | One verification per selected walk. |
+| Graph journey | One test per edge occurrence, including verification of its destination. Repeated visits have distinct test identities. Navigation alone cannot pass a test. |
+| Explicit boundary input | Exact input and expected validity are known before execution. Each is a separate test. |
+| Hypothesis generation phase | One test per field and one combined-input test per campaign. `--cases` records the requested maximum examples; actual attempts, failure reproduction and shrinking are recorded inside that phase. Finite domains can finish with fewer examples. |
+| Overall run outcome | One additional JUnit test accounts for coverage, global requirements, planning, hooks and cleanup. |
+
+JUnit maps a business defect to `<failure>`, an attempted but inconclusive check to `<error>`, and selected tests never reached to `<skipped>`. A partially executed generation phase that hits a budget is an error; untouched phases or boundary cases are skipped. No fictitious skipped generated examples are added. The overall run outcome also fails or errors when the run cannot pass, so an aborted run cannot look successful merely because its remaining tests were skipped. A defect can therefore appear on both its individual test and the overall result.
+
+Failure/error entries contain the business intent, source/destination or property constraints, exact attempted inputs, observed checkpoints, rule verdicts, relevant browser actions and Jev requests/responses, hook errors, stop context and artifact references. Skips identify their planned test, the stop reason and the upstream failing test where applicable. The saved seed, effective generator, model hash and run limits support reproduction. `--debug` includes the stopping traceback. XML safely escapes browser text and generated values.
+
+Only selected scope is counted. Graph edges omitted by the chosen route appear in `planning.unselected_edges`; property modes disabled by `--input-mode none` are not reported as skipped failures. Replay runs contain the requested input test and overall outcome, without pretending to explore the graph. Configuration/model errors before a run is created still use the CLI error and exit code rather than producing a test inventory.
+
+## Debugging an early exit
+
+The runner stops at the first defect or unresolved outcome. Full graph coverage is a target, not permission to continue from an unverified state. Property campaigns run after graph traversal, so an early graph failure can have zero input attempts.
+
+First separate native graph planning from browser execution; planning makes no Jev calls:
+
+```bash
+testwalker validate --model models/trailhead.json
+testwalker plan --site trailhead --generator new_york_street_sweeper --max-steps 1000
+```
+
+Then isolate the short, predefined Trailhead scenario, retain the test browser, and include tracebacks:
+
+```bash
+testwalker demo --site trailhead --demo-hooks --headed --keep-browser-open --debug \
+  --generator predefined_path --edge-coverage 0 --state-coverage 0 \
+  --input-mode none --max-steps 1000 --max-calls 250
+```
+
+From a source checkout, prefix each command with `uv run`. Open the `Report:` path printed at exit. **Where execution stopped** identifies the phase, walk and model element; **Journey checkpoints** contains expected states, observed text and individual rule answers. **Full execution evidence** includes action traces, decision requests/responses and hook events. `--debug` adds the exception traceback to the console and report. It also prints configuration/import tracebacks for errors before a report can be created.
+
+For low-confidence state identification, compare the expected description with the actual page and the last Jev answers. For unresolved requirements, determine whether the page really exposes the evidence; backend-only facts may need a lifecycle hook. For navigation failure, inspect the chosen controls and action trace. Increase `--max-calls` or `--max-actions` only when the corresponding limit is the stated reason for stopping. A two-attempt property cap intentionally stops unfinished campaigns as INCONCLUSIVE; it does not explain stopping after only a few graph edges.
+
+The retained demo tab can be inspected, but its temporary server has stopped. For interactive reloads, run `testwalker serve --port 4173` in a separate terminal and test it using `testwalker run --model models/trailhead.json --url http://127.0.0.1:4173 --hooks examples/trailhead/hooks.py`, adding your exploration/debug options. Use the saved `model.json` from a report to reproduce its exact specification, and use the same `--seed` and generator for its route. Jev decisions can still vary between runs. Lowering the confidence threshold changes the acceptance standard; it is not a fix for an ambiguous model.
 
 Replay one property counterexample:
 
 ```bash
-uv run model-test demo --bug \
+testwalker demo --bug \
   --model artifacts/RUN/model.json --replay artifacts/RUN/replay.json
 
-uv run model-test run --model artifacts/RUN/model.json \
+testwalker run --model artifacts/RUN/model.json \
   --url http://localhost:3000 --replay artifacts/RUN/replay.json
 ```
 
@@ -272,13 +319,13 @@ Replay requires the exact model hash and the same application setup. It checks o
 
 ```bash
 uv run pytest
-uv run ruff check model_test tests
-uv run model-test plan
-uv run model-test plan --model models/feedback.json
-uv run model-test serve
+uv run ruff check testwalker tests
+testwalker plan
+testwalker plan --model models/feedback.json
+testwalker serve
 ```
 
-`plan` validates and prints an actual GraphWalker traversal without starting a browser or calling an API. It is a planning command, not an offline browser test. Python tests cover contracts, Jev choices, literal input entry, confidence and budgets, Hypothesis shrinking, coverage and replay. Native GraphWalker tests run when its binary is installed.
+`plan` validates and prints an actual GraphWalker traversal without starting a browser or calling an API. It is a planning command, not an offline browser test. Python tests cover contracts, Jev choices, literal input entry, confidence and budgets, Hypothesis shrinking, coverage and replay. Native GraphWalker tests run when `testwalker.properties` supplies its executable. Build the local wheel and source archive with `uv build --out-dir build`; no publishing step is needed.
 
 The framework currently handles one graph, ordinary visible HTML controls and bounded data dictionaries. It rejects native action scripts, guards, browser targets and assertion DSLs. Cross-field constraints and arbitrary generator programs are outside this vocabulary; relational outcome requirements can be written as prose, but are not translated into constraint solvers. Rejection must be modeled as a distinguishable business state.
 

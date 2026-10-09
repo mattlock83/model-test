@@ -1,6 +1,7 @@
 [project]
-name = "model-test"
-version = "3.1.0"
+name = "testwalker"
+version = "3.2.0"
+readme = "README.md"
 description = "Business-model browser testing with GraphWalker, Jev Ultrafast and Hypothesis"
 requires-python = ">=3.12"
 dependencies = [
@@ -10,7 +11,7 @@ dependencies = [
 ]
 
 [project.scripts]
-model-test = "model_test.cli:main"
+testwalker = "testwalker.cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -20,17 +21,18 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["model_test"]
+packages = ["testwalker"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"models" = "model_test/data/models"
-"dist" = "model_test/data/dist"
-"graphwalker.lock.json" = "model_test/data/graphwalker.lock.json"
-"docs/model-format.md" = "model_test/data/model-format.md"
-"examples" = "model_test/data/examples"
+"models" = "testwalker/data/models"
+"dist" = "testwalker/data/dist"
+"docs/model-format.md" = "testwalker/data/model-format.md"
+"examples" = "testwalker/data/examples"
+"testwalker.properties.example" = "testwalker/data/testwalker.properties.example"
+"docs/hooks.md" = "testwalker/data/hooks.md"
 
 [tool.hatch.build.targets.sdist]
-include = ["model_test", "models", "dist", "docs", "examples", "tests", "pyproject.toml", "graphwalker.lock.json", "README.md", "run-demo.sh", "uv.lock"]
+include = ["testwalker", "models", "dist", "docs", "examples", "tests", "pyproject.toml", "README.md", "testwalker.properties.example", "uv.lock"]
 
 [tool.hatch.build.targets.sdist.force-include]
 "dist" = "dist"

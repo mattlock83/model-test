@@ -1,0 +1,20 @@
+# Required for plan, run and demo. Use a file path, not a command with arguments.
+# Relative paths are resolved from this properties file's directory.
+GRAPHWALKER_BIN=/absolute/path/to/graphwalker
+
+# Required for run and demo. Plan does not need an API key.
+TYPESAFE_API_KEY=your_jev_key
+
+# Optional: connect to Chrome you have already started instead of launching it.
+# CDP_URL=http://127.0.0.1:9222
+
+# Optional isolated Chrome settings; the CLI locates Chrome automatically.
+# CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+# CHROME_PROFILE_DIR=./chrome-test-profile
+# CHROME_DEBUG_PORT=9222
+
+# Optional provider models and text helper for undeclared free-text journeys.
+# TYPESAFE_MODEL=jev-latest
+# TEXT_MODEL_API_KEY=your_text_helper_key
+# TEXT_MODEL_BASE_URL=https://openrouter.ai/api/v1
+# TEXT_MODEL=inception/mercury-2.5

@@ -2,9 +2,9 @@ import json
 
 import pytest
 
-from model_test.graphwalker import DEFAULT_BINARY, generate_path, parse_path
-from model_test.model import load_model
-from model_test.resources import ROOT
+from testwalker.graphwalker import generate_path, parse_path
+from testwalker.model import load_model
+from testwalker.resources import ROOT
 
 
 def transcript(model, ids):
@@ -45,14 +45,15 @@ def test_graph_identity_cannot_be_spoofed_by_matching_name(model, ids):
         parse_path(model, output)
 
 
-@pytest.mark.skipif(not DEFAULT_BINARY.exists(), reason="Run model-test setup for native GraphWalker checks")
 @pytest.mark.parametrize("name", ["booking", "feedback"])
-def test_actual_rust_graphwalker_reads_business_metadata_and_covers_every_edge(name, tmp_path):
+def test_actual_rust_graphwalker_reads_business_metadata_and_covers_every_edge(
+    name, tmp_path, native_graphwalker
+):
     model = load_model(ROOT / f"models/{name}.json")
     saved = tmp_path / "model.json"
     saved.write_text(json.dumps(model.document))
-    first = generate_path(model, saved, seed=42)
-    second = generate_path(model, saved, seed=42)
+    first = generate_path(model, saved, seed=42, binary=native_graphwalker)
+    second = generate_path(model, saved, seed=42, binary=native_graphwalker)
     assert [i["id"] for i in first] == [i["id"] for i in second]
     assert {i["id"] for i in first if i["kind"] == "edge"} == set(model.edges)
     assert {i["id"] for i in first if i["kind"] == "state"} == set(model.states)

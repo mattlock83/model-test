@@ -1,8 +1,8 @@
 import pytest
 from hypothesis import strategies as st
 
-from model_test import properties
-from model_test.errors import Defect, Inconclusive
+from testwalker import properties
+from testwalker.errors import Defect, Inconclusive
 
 
 def test_boundaries_include_every_partition_even_with_one_generated_example(model):
@@ -43,7 +43,7 @@ def test_provider_failure_is_latched_without_more_calls_or_shrinking(model):
 
 
 def test_email_length_boundaries_isolate_length_from_format():
-    from model_test.model import violations
+    from testwalker.model import violations
 
     field = {
         "description": "Contact",

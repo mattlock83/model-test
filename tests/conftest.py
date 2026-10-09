@@ -1,6 +1,6 @@
 import pytest
 
-from model_test.model import validate_model
+from testwalker.model import validate_model
 
 
 @pytest.fixture
@@ -77,3 +77,14 @@ def model():
             ]
         }
     )
+
+
+@pytest.fixture
+def native_graphwalker():
+    from testwalker.config import RuntimeConfig
+    from testwalker.resources import ROOT
+
+    path = ROOT / "testwalker.properties"
+    if not path.exists():
+        pytest.skip("Supply testwalker.properties to run native GraphWalker integration tests")
+    return RuntimeConfig.load(path).graphwalker

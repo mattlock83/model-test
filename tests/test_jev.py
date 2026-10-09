@@ -4,8 +4,8 @@ import httpx
 import pytest
 from jev_ultrafast.browser import StalePage
 
-from model_test.errors import Inconclusive
-from model_test.jev import JevBrowser, JevClient, Oracle
+from testwalker.errors import Inconclusive
+from testwalker.jev import JevBrowser, JevClient, Oracle
 
 
 def answer(choice, options, confidence=1):
@@ -753,3 +753,78 @@ def test_offscreen_submission_without_supported_scroll_never_clicks(model):
     with pytest.raises(Inconclusive, match="submission control is outside"):
         driver._data_action(page, "Reserve", model.data_sets["Reservation"], {"Places": "5"}, [], {"Places"})
     assert driver.browser.events == []
+
+
+def test_explicit_client_credentials_and_model_override_ambient_environment(monkeypatch):
+    monkeypatch.setenv("TYPESAFE_API_KEY", "wrong-ambient-key")
+    monkeypatch.setenv("TYPESAFE_MODEL", "wrong-ambient-model")
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(200, json={"answers": {}})
+
+    client = JevClient(
+        api_key="explicit-property-key",
+        model="explicit-property-model",
+        http=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    try:
+        client.ask({"text": "synthetic page"}, {})
+        assert requests[0].headers["Authorization"] == "Bearer explicit-property-key"
+        assert json.loads(requests[0].content)["model"] == "explicit-property-model"
+        assert "explicit-property-key" not in json.dumps(client.decisions)
+    finally:
+        client.close()
+
+
+def test_malformed_target_answer_is_not_retried_as_an_equivalent_control():
+    class RefusedTarget(Decisions):
+        def ask(self, state, questions):
+            result = super().ask(state, questions)
+            if "click_target" in questions:
+                result["answers"]["click_target"] = {"refusal": "cannot decide"}
+            return result
+
+    client = RefusedTarget(lambda *_: {"operation": "CLICK", "click_target": "2"})
+    driver = JevBrowser(client, browser_factory=DOM)
+    driver.reset("http://demo.test")
+    with pytest.raises(Inconclusive, match="Invalid or refused"):
+        driver._decision(driver.observe(), "Continue", [], {})
+    assert len(client.requests) == 1
+    assert not driver.browser.events
+
+
+def test_global_audit_preserves_different_observations_of_the_same_state(model):
+    client = Decisions(lambda *_: {})
+    common = {"status": "PASS", "observed": "accepted", "expected": "accepted", "checks": []}
+    records = [
+        {**common, "evidence": {"text": "First observed total: 90"}},
+        {**common, "evidence": {"text": "Later observed total: 135"}},
+    ]
+    Oracle(client, model).audit_globals(records + [records[0]], model.business["rules"])
+    scenarios = client.requests[0][0]["executed_scenarios"]
+    assert len(scenarios) == 2
+    assert [s["visible_text"] for s in scenarios] == ["First observed total: 90", "Later observed total: 135"]
+
+
+def test_screenshot_uses_owned_tab_and_never_calls_jev(tmp_path):
+    import base64
+
+    calls = []
+    png = b"\x89PNG\r\n\x1a\nunit-image"
+
+    class CapturingDOM(DOM):
+        def call(self, method, **kwargs):
+            calls.append((method, kwargs))
+            return {"data": base64.b64encode(png).decode()}
+
+    client = Decisions(lambda *_: pytest.fail("Screenshot must not use Jev"))
+    driver = JevBrowser(client, browser_factory=CapturingDOM)
+    with pytest.raises(RuntimeError, match="No active test tab"):
+        driver.screenshot(tmp_path / "empty.png")
+    driver.reset("http://example.test")
+    driver.screenshot(tmp_path / "shot.png")
+    assert (tmp_path / "shot.png").read_bytes() == png
+    assert calls == [("Page.captureScreenshot", {"format": "png", "captureBeyondViewport": False})]
+    assert not client.requests

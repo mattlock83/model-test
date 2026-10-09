@@ -4,14 +4,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from model_test.errors import Defect
-from model_test.graphwalker import generate_path
-from model_test.hooks import HookContext, Hooks
-from model_test.model import load_model, setup_path, violations
-from model_test.policy import exploration_model
-from model_test.properties import boundaries
-from model_test.resources import asset
-from model_test.trailhead_demo import CAPACITY, TrailheadStore, booking_data
+from testwalker.errors import Defect
+from testwalker.graphwalker import generate_path
+from testwalker.hooks import HookContext, Hooks
+from testwalker.model import load_model, setup_path, violations
+from testwalker.policy import exploration_model
+from testwalker.properties import boundaries
+from testwalker.resources import asset
+from testwalker.trailhead_demo import CAPACITY, TrailheadStore, booking_data
 
 
 @pytest.fixture
@@ -34,10 +34,12 @@ def extension(trailhead):
     return hooks, store, ctx
 
 
-def test_complete_native_route_covers_every_state_edge_and_can_return_home(trailhead, tmp_path):
+def test_complete_native_route_covers_every_state_edge_and_can_return_home(
+    trailhead, tmp_path, native_graphwalker
+):
     document = tmp_path / "model.json"
     document.write_text(json.dumps(trailhead.document))
-    route = generate_path(trailhead, document, max_steps=1000)
+    route = generate_path(trailhead, document, max_steps=1000, binary=native_graphwalker)
     assert {e["id"] for e in route if e["kind"] == "edge"} == set(trailhead.edges)
     assert {e["id"] for e in route if e["kind"] == "state"} == set(trailhead.states)
     assert len({edge["weight"] for edge in trailhead.edges.values()}) >= 4
@@ -48,11 +50,13 @@ def test_complete_native_route_covers_every_state_edge_and_can_return_home(trail
             assert not path or path[-1]["targetVertexId"] == edge["sourceVertexId"]
 
 
-def test_predefined_route_covers_both_hook_scenarios_and_all_datasets(trailhead, tmp_path):
+def test_predefined_route_covers_both_hook_scenarios_and_all_datasets(
+    trailhead, tmp_path, native_graphwalker
+):
     configured = exploration_model(trailhead, generator="predefined_path", edge_coverage=0, state_coverage=0)
     document = tmp_path / "model.json"
     document.write_text(json.dumps(configured.document))
-    route = generate_path(configured, document)
+    route = generate_path(configured, document, binary=native_graphwalker)
     ids = [e["id"] for e in route if e["kind"] == "edge"]
     assert ids == configured.graph["predefinedPathEdgeIds"]
     assert {"confirm_booking", "confirm_cancellation", "choose_marina_pickup"} <= set(ids)
@@ -217,13 +221,15 @@ def test_picker_hook_is_scoped_to_business_edges_and_checks_rendered_result(exte
         ("quick_random(edge_coverage(100)) a_star(reached_vertex(home))", 100, 100),
     ],
 )
-def test_additional_native_exploration_modes(trailhead, tmp_path, expression, edges, states):
+def test_additional_native_exploration_modes(
+    trailhead, tmp_path, expression, edges, states, native_graphwalker
+):
     configured = exploration_model(
         trailhead, generator=expression, edge_coverage=edges, state_coverage=states
     )
     path = tmp_path / "model.json"
     path.write_text(json.dumps(configured.document))
-    route = generate_path(configured, path, max_steps=1000)
+    route = generate_path(configured, path, max_steps=1000, binary=native_graphwalker)
     assert route[0]["id"] == "home"
     if expression.startswith("a_star"):
         assert route[-1]["id"] == "cancellation_done"
@@ -238,7 +244,7 @@ def test_served_application_endpoints_and_fixture_hooks(trailhead, tmp_path, mon
     from urllib.error import HTTPError
     from urllib.request import ProxyHandler, Request, build_opener
 
-    from model_test.server import serve
+    from testwalker.server import serve
 
     opener = build_opener(ProxyHandler({}))
 

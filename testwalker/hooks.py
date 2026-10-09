@@ -71,7 +71,7 @@ class Hooks:
             return cls()
         path = Path(path).expanduser().resolve()
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        spec = importlib.util.spec_from_file_location("model_test_user_hooks", path)
+        spec = importlib.util.spec_from_file_location("testwalker_user_hooks", path)
         if spec is None or spec.loader is None:
             raise ValueError("--hooks must name a Python file")
         module = importlib.util.module_from_spec(spec)
@@ -91,6 +91,10 @@ class Hooks:
                 value.close()
                 raise TypeError("Async hook results are not supported")
             entry["status"] = "PASS"
+        except (Defect, Inconclusive) as error:
+            # Preserve structured evidence and counterexamples from framework hooks.
+            entry.update(status="FAIL" if isinstance(error, Defect) else "INCONCLUSIVE", error=str(error))
+            raise
         except AssertionError as error:
             entry.update(status="FAIL", error=str(error))
             raise Defect(f"Hook {event}: {error}") from error
