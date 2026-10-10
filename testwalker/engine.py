@@ -11,10 +11,11 @@ from .config import parse_http_url
 from .errors import Defect, Inconclusive
 from .graphwalker import generate_path
 from .hooks import HookContext, Hooks
+from .input_strategies import StrategyProvider, validate_policy
 from .jev import JevBrowser, JevClient, Oracle
 from .model import setup_path, violations
 from .planning import TestPlan
-from .properties import evaluate_case, exercise
+from .properties import evaluate_case, exercise, plan_cases
 from .report import write_report
 
 
@@ -153,8 +154,10 @@ def run(
     *,
     output="artifacts",
     seed=42,
-    cases=3,
-    input_mode="all",
+    cases=1,
+    input_mode="focused",
+    input_strategies=None,
+    strategy_provider=None,
     shrink=True,
     max_input_attempts=1000,
     walks=1,
@@ -177,8 +180,12 @@ def run(
 ):
     if type(walks) is not int or not 1 <= walks <= 100:
         raise ValueError("walks must be 1–100")
-    if input_mode not in {"all", "generated", "boundaries", "none"}:
+    if input_mode not in {"all", "generated", "boundaries", "focused", "none"}:
         raise ValueError("Unknown input exploration mode")
+    input_strategies = validate_policy(input_strategies, model.data_sets)
+    strategy_provider = strategy_provider or StrategyProvider()
+    if input_mode != "focused" and (input_strategies or strategy_provider.factory):
+        raise ValueError("Input strategy configuration and providers require --input-mode focused")
     if type(max_input_attempts) is not int or not 1 <= max_input_attempts <= 10000:
         raise ValueError("max_input_attempts must be 1–10000")
     if keep_browser_open and not headed:
@@ -208,6 +215,8 @@ def run(
             "actions_per_journey": max_actions,
             "generated_cases": cases,
             "input_mode": input_mode,
+            "input_strategies": input_strategies,
+            "strategy_provider": strategy_provider.metadata,
             "shrink": shrink,
             "input_attempts": max_input_attempts,
             "walks": walks,
@@ -255,11 +264,12 @@ def run(
     report["scope"] = {
         "input_mode": input_mode,
         "available_campaigns": len(campaigns),
-        "selected_campaigns": len(campaigns) if input_mode != "none" else 0,
+        "selected_campaigns": 0,
         "walks_requested": walks,
     }
     plan = TestPlan(report, browser, client)
     plan_saved = False
+    selected_campaigns = {}
 
     def record(entry, edge):
         entry["journey"] = edge["id"]
@@ -286,9 +296,6 @@ def run(
     def attempt(edge, data, invalid):
         nonlocal input_attempts
         activity.update(phase="property case", input=deepcopy(data), violations=deepcopy(invalid))
-        if input_attempts >= max_input_attempts:
-            activity["phase"] = "property input budget"
-            raise Inconclusive("The input-attempt budget was exhausted", result={"attempted": False})
         input_attempts += 1
         return runner.case(edge, data, invalid)
 
@@ -306,9 +313,17 @@ def run(
                 input=case.get("input"),
                 phase={"kind": "replay", "source": "replay"},
             )
+            report["scope"]["selected_campaigns"] = 1
         else:
             activity = {"phase": "property planning"}
-            plan.add_campaigns(model, campaigns.values(), mode=input_mode, cases=cases)
+            selected_campaigns = plan.add_campaigns(
+                model,
+                campaigns.values(),
+                mode=input_mode,
+                cases=cases,
+                max_attempts=max_input_attempts,
+                input_strategies=input_strategies,
+            )
             paths = []
             report["walks"] = []
             for walk in range(walks):
@@ -407,7 +422,10 @@ def run(
                             plan.finish("PASS")
                         log(f"{entry['status']} · {item['name']}")
             runner.walk = None
-            for identity, edge in campaigns.items() if input_mode != "none" else []:
+            for identity, edge in campaigns.items():
+                selected_phases = selected_campaigns.get(edge["id"])
+                if not selected_phases:
+                    continue
                 activity = {
                     "phase": "property campaign",
                     "element": {"id": edge["id"], "kind": "edge"},
@@ -423,8 +441,22 @@ def run(
                     mode=input_mode,
                     shrink=shrink,
                     phase_scope=lambda phase, e=edge: plan.phase(e, phase),
+                    planned=selected_phases,
+                    remaining_attempts=lambda: max_input_attempts - input_attempts,
+                    strategy_provider=strategy_provider,
                 )
-                suites.add(identity)
+                all_phases = plan_cases(
+                    fields,
+                    cases=cases,
+                    mode=input_mode,
+                    policy=input_strategies,
+                    data_set=edge["properties"]["business"]["data set"],
+                )
+                if len(selected_phases) == len(all_phases) and all(
+                    phase.get("max_examples") == phase.get("requested_max_examples")
+                    for phase in selected_phases
+                ):
+                    suites.add(identity)
             activity = {"phase": "coverage check"}
             coverage = model.business["coverage"]
             if len(seen_edges) / len(model.edges) * 100 < coverage["edges"]:
@@ -506,10 +538,18 @@ def run(
                 if report["status"] != "FAIL":
                     report["status"] = "INCONCLUSIVE"
                     report.setdefault("error", f"Cleanup failed: {error}")
+        property_tests = [test for test in plan.tests if test["kind"] == "property"]
         report["coverage"] = {
             "edges": {"verified": len(seen_edges), "total": len(model.edges), "ids": sorted(seen_edges)},
             "states": {"verified": len(seen_states), "total": len(model.states), "ids": sorted(seen_states)},
             "properties": {"completed": len(suites), "total": len(campaigns)},
+            "property phases": {
+                "completed": sum(test["status"] == "PASS" for test in property_tests),
+                "total": len(property_tests),
+                "available": report["scope"]
+                .get("property_selection", {})
+                .get("available_phases", len(property_tests)),
+            },
             "global requirements": {
                 "verified": len(runner.verified_rules),
                 "total": len(set(model.business["rules"])),

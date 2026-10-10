@@ -4,6 +4,8 @@ Trailhead is a synthetic travel centre with **20 states, 148 journeys and three 
 
 The exported [GraphWalker model](../../models/trailhead.json) is the maintained business specification. It contains no selectors, imports, scripts, browser actions or page objects. Author it independently in GraphWalker; this framework only consumes the exported file.
 
+Read the [plain-English testing guide](../../docs/testing.md) for the workflow diagram, how property inputs are counted, setup/reset behaviour, and PASS/FAIL/INCONCLUSIVE/SKIPPED meanings. From a source checkout, prefix the `testwalker` commands below with `uv run`.
+
 ## Start with the short scenario
 
 After installing the package, with GraphWalker and your Jev key in `testwalker.properties`:
@@ -21,7 +23,7 @@ The Python CLI starts or reuses isolated Chrome and serves the bundled example. 
 3. Reject a short cancellation reason, correct it, preview the full refund, and finally cancel.
 4. Reject an invalid member email, correct it, save the profile, and return home.
 
-This is a deliberately scoped smoke test: the zero coverage targets permit that short path, and `--input-mode none` disables the separate Hypothesis campaigns. Nominal valid and invalid data journeys still execute. A PASS covers the selected route and its applicable requirements; it does not claim 148-edge coverage. Every global rule must still be established. Jev uncertainty or an exhausted budget remains INCONCLUSIVE.
+This is a deliberately scoped smoke test: the zero coverage targets permit that short path, and `--input-mode none` disables the separate Hypothesis campaigns. Nominal valid and invalid data journeys still execute. A PASS covers the selected route and its applicable requirements; it does not claim 148-edge coverage. Every global rule must still be established. Jev uncertainty or an exhausted call/action allowance remains INCONCLUSIVE. The full walk also exercises controls below the viewport; the walker observes their meaning and scrolls to them without adding selectors to the graph.
 
 ## Explore the complete graph and input space
 
@@ -36,13 +38,32 @@ testwalker demo --site trailhead --demo-hooks --headed \
   --input-mode generated --cases 1 --max-input-attempts 200 \
   --max-steps 1000 --max-calls 4000
 
-# Add explicit boundaries and more generated cases; shrinking is enabled by default.
+# Full graph exploration plus just two selected property inputs.
 testwalker demo --site trailhead --demo-hooks --headed \
-  --input-mode all --cases 5 --max-input-attempts 1000 \
-  --max-steps 1000 --max-calls 8000
+  --generator new_york_street_sweeper \
+  --edge-coverage 100 --state-coverage 100 --max-steps 1000 \
+  --input-mode generated --cases 1 --max-input-attempts 2 \
+  --no-shrink --max-calls 4000
+
+# Recommended: full graph plus focused boundaries (the default input mode).
+testwalker demo --site trailhead --demo-hooks --headed \
+  --generator new_york_street_sweeper \
+  --edge-coverage 100 --state-coverage 100 --max-steps 1000 \
+  --max-calls 10000
+
+# Broader randomized property scope (opt-in); shrinking is enabled by default.
+testwalker demo --site trailhead --demo-hooks --headed \
+  --generator new_york_street_sweeper \
+  --edge-coverage 100 --state-coverage 100 --max-steps 1000 \
+  --input-mode all --cases 20 --max-input-attempts 2000 \
+  --max-calls 10000
 ```
 
-These call limits are caps, not predicted usage or prices. The larger scope is substantially more expensive than the small booking demo. A small input-attempt cap can stop a campaign before completion; the framework will report that honestly. Add `--walks 2 --seed 42` for two separately reset graph walks using successive seeds. Inputs, resets and shrinking also use the shared run budget.
+The default focused mode selects 186 Hypothesis phases across seven campaigns, with one generated example per partition. Reproduction and shrinking can add attempts. Increase `--cases` or use `--input-strategies examples/trailhead/input-strategies.json` for per-field tuning. The same constraints are tested separately from different form states; identical reference inputs within a campaign are deduplicated. See [input strategies](../../docs/input-strategies.md).
+
+The broader command selects all seven campaigns, with 186 explicit boundary cases and up to 640 generated inputs. `--cases 20` applies to each field phase and each combined phase. The 2,000-attempt limit selects all 826 planned inputs and leaves room for reproduction and shrinking; finite domains may use fewer. The Jev allowance is separate, and the runner stops at the first defect or unverifiable outcome.
+
+These call limits are caps, not predicted usage or prices. The larger scope is substantially more expensive than the small booking demo. With `--input-mode generated --cases 1 --no-shrink`, the current Trailhead model offers 32 generation phases across seven campaigns (one phase per field plus a combined phase). `--max-input-attempts 2` selects the first two phases in model order before execution. Both may pass and produce an overall PASS when the graph checks and global rules also pass; the other 30 phases are outside this run, not skipped or inconclusive. This small sample does not cover every campaign or field. Use `--max-input-attempts 32` to select all 32 phases, or `--input-mode none` for graph-only exploration. Shrinking and failure reproduction share the total input-attempt limit; an observed failure remains FAIL if there is no allowance left to minimize it. Add `--walks 2 --seed 42` for two separately reset graph walks using successive seeds. Inputs, resets and shrinking also consume the shared Jev call allowance.
 
 Inspect routes without an API key or browser:
 
@@ -83,6 +104,8 @@ GraphWalker guards, executable actions, linked graphs and model-authored JavaScr
 [hooks.py](hooks.py) uses `before_reset` to seed a clean backend ledger for each graph walk and every property attempt, including shrink/replay attempts. Repeated visits within a walk retain state; a new property case gets its own clean fixture. The synthetic capacity of 1,000 places per adventure accommodates repeated confirmations during long graph walks; the business limit remains six travellers per booking.
 
 Around booking submission, `before_transition` saves the backend ledger. At a successfully verified review or rejection state, `after_state` checks that no booking, inventory or refund changed. At final confirmation it verifies exactly one new booking, the literal submitted values, an independently calculated charge in cents, and the exact inventory decrement. Reviewing never calls the booking API.
+
+The policy-page state checks that these policies are explained to the visitor. A displayed policy does not prove backend behaviour; the review, confirmation and cancellation hooks check the actual ledger at their respective checkpoints.
 
 ## Hook scenario 2: cancellation refund
 
@@ -140,4 +163,8 @@ The demo's local `/api/trailhead/` endpoints are fixtures for this synthetic app
 
 The healthy predefined live run passed all **14 selected journeys, 14 states and five global requirements**, with both backend scenarios and the Marina picker verified, using **62 Jev calls** at the unchanged 0.85 threshold. Separate targeted live runs caught the missing inventory update (18 calls) and duplicate refund (30 calls) as FAIL through the hooks, despite successful UI acknowledgements.
 
-The repository suite has **149 passing tests**, including native traversal, independent input boundaries, fixture HTTP endpoints, hook assertions, deliberate defects and the generic off-screen submission fix. Wheel and source builds include the site, model, hook file and guide. The full 148-journey browser run and the seven live property campaigns were not run in this validation; route planning and backend boundary tests are not substitutes for those live scopes.
+The regression suite covers native traversal, independent input boundaries, fixture HTTP endpoints, hook assertions, deliberate defects, offscreen controls, and selected input scope. Wheel and source builds include the site, model, hook file and guide.
+
+The full live street-sweeper run with generated inputs (`--cases 1 --max-input-attempts 32 --no-shrink`) passed all 148 journeys, 20 states, seven property campaigns and five global requirements, using 518 Jev calls at the unchanged 0.85 threshold. Its report contained 385 passed tests and no failures, inconclusive tests or skips. The backend audit recorded 136 successful checkpoints and 15 custom pickup selections. This validates one complete run; the formal dictionary and outcome metadata scope the final validation audit, while independent Jev verdicts still check the observed evidence.
+
+A later live run with `--cases 1 --max-input-attempts 2 --no-shrink` passed all 148 journeys, 20 states, both selected property phases and five global requirements using 484 Jev calls. Its report contained 355 passed tests and no failures, inconclusive tests or skips. The other 30 generated phases were outside scope. These measured runs do not establish the outcome or cost of the larger comprehensive command.

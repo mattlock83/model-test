@@ -114,6 +114,8 @@ def test_defect_creates_replay_and_replay_does_not_claim_full_coverage(model, tm
     fixed = execute(model, tmp_path, replay=replay)
     assert fixed["status"] == "PASS" and fixed["replay"]
     assert fixed["coverage"]["properties"]["completed"] == 0
+    assert fixed["coverage"]["property phases"] == {"completed": 1, "total": 1, "available": 1}
+    assert "one replay input" in (Path(fixed["directory"]) / "report.html").read_text()
 
 
 def test_failed_destination_never_earns_edge_coverage(model, tmp_path):
@@ -168,7 +170,7 @@ def test_reports_escape_browser_html(model, tmp_path):
     write_report(tmp_path, report)
     html = (tmp_path / "report.html").read_text()
     assert "<script>alert(1)</script>" not in html
-    assert "&lt;script&gt;" in html
+    assert "\\u003cscript\\u003e" in html
 
 
 def test_unverified_global_rules_prevent_overall_pass(model, tmp_path):
@@ -354,15 +356,44 @@ def test_reset_hooks_share_state_without_changing_generated_data(model, tmp_path
     assert all(case["input"]["Places"] != 999 for case in report["cases"])
 
 
-def test_total_input_budget_stops_campaign_without_claiming_completion(model, tmp_path):
+def test_input_limit_selects_scope_without_claiming_full_campaign_coverage(model, tmp_path):
     report = execute(model, tmp_path, input_mode="boundaries", max_input_attempts=2)
-    assert report["status"] == "INCONCLUSIVE"
+    assert report["status"] == "PASS"
     assert report["input_attempts"] == 2
-    assert "budget" in report["error"]
+    assert "error" not in report and "stop" not in report
     assert report["coverage"]["properties"]["completed"] == 0
-    assert report["stop"]["phase"] == "property input budget"
-    assert report["stop"]["element"]["id"] == "submit"
-    assert "traceback" not in report["stop"]
+    assert report["coverage"]["property phases"] == {"completed": 2, "total": 2, "available": 10}
+    assert report["scope"]["selected_campaigns"] == 1
+    assert report["scope"]["property_selection"] == {
+        "policy": "model order",
+        "input_limit": 2,
+        "available_phases": 10,
+        "selected_phases": 2,
+        "excluded_phases": 8,
+        "available_examples": 10,
+        "selected_examples": 2,
+    }
+
+
+def test_focused_strategy_settings_are_planned_recorded_and_limited(model, tmp_path):
+    policy = {"data sets": {"Reservation": {"Places": {"cases": 3, "radius": 5}}}}
+    report = execute(model, tmp_path, input_strategies=policy, max_input_attempts=2)
+    assert report["status"] == "PASS"
+    assert report["limits"]["input_strategies"] == policy
+    phase = next(test["phase"] for test in report["tests"] if test["kind"] == "property")
+    assert phase["max_examples"] == 2 and phase["requested_max_examples"] == 3
+    assert phase["strategy"]["radius"] == 5
+    assert report["input_attempts"] == 1  # singleton valid example exhausts naturally
+    assert report["coverage"]["properties"]["completed"] == 0
+    inventory = json.loads((Path(report["directory"]) / "plan.json").read_text())
+    assert inventory["limits"]["input_strategies"] == policy
+
+
+def test_focused_failure_survives_limit_during_hypothesis_reproduction(model, tmp_path):
+    report = execute(model, tmp_path, bug=True, max_input_attempts=8)
+    assert report["status"] == "FAIL"
+    assert report["counterexample"]["input"] == {"Places": 5}
+    assert report["counterexample"]["minimization_limited"]
 
 
 def test_graph_only_run_reports_that_properties_were_not_tested(model, tmp_path):
@@ -459,7 +490,7 @@ def test_interrupted_property_records_the_attempt_and_preserves_keyboard_interru
     assert browser.closed
 
 
-def test_budget_summary_counts_executed_attempts_not_the_unstarted_case(model, tmp_path):
+def test_input_selection_does_not_record_a_fictitious_unstarted_case(model, tmp_path):
     messages = []
     report = run(
         model,
@@ -474,7 +505,8 @@ def test_budget_summary_counts_executed_attempts_not_the_unstarted_case(model, t
         log=messages.append,
     )
     assert report["input_attempts"] == 2
-    assert report["cases"][-1]["attempted"] is False
+    assert len(report["cases"]) == 2
+    assert all(case["status"] == "PASS" for case in report["cases"])
     assert any("2 input attempts" in message for message in messages)
 
 
@@ -570,28 +602,31 @@ def test_junit_navigation_uncertainty_is_error_with_actions_and_decisions(model,
     assert "0.85" in graph.find("./testcase/error").get("message")
 
 
-def test_junit_boundary_budget_records_two_passes_and_exact_remaining_skips(model, tmp_path):
+def test_junit_limited_boundaries_records_only_selected_tests(model, tmp_path):
     from testwalker.properties import plan_cases
 
     report = execute(model, tmp_path, input_mode="boundaries", max_input_attempts=2)
     root = junit(report)
     planned_inputs = plan_cases(model.data_sets["Reservation"], mode="boundaries")
     suite = root.find("./testsuite[@name='testwalker.property']")
-    assert int(suite.get("tests")) == len(planned_inputs)
-    assert int(suite.get("skipped")) == len(planned_inputs) - 2
+    assert suite.get("tests") == "2" and suite.get("skipped") == "0"
     assert suite.get("errors") == suite.get("failures") == "0"
-    assert root.find("./testsuite[@name='testwalker.run']/testcase/error") is not None
+    assert root.find("./testsuite[@name='testwalker.run']/testcase/error") is None
     assert report["test_summary"]["PASS"] == 7  # five graph checks plus two property inputs
-    skipped = json.loads(suite.find("./testcase/skipped").text)
-    assert skipped["test"]["phase"]["input"] == planned_inputs[2]["input"]
-    assert "budget" in skipped["test"]["reason"]
+    inventory = json.loads((Path(report["directory"]) / "plan.json").read_text())
+    unselected = inventory["planning"]["unselected_properties"]
+    assert len(unselected) == len(planned_inputs) - 2
+    assert unselected[0]["phase"]["input"] == planned_inputs[2]["input"]
+    assert inventory["scope"] == report["scope"]
+    assert all(test["status"] == "NOT_RUN" for test in inventory["tests"])
 
 
-def test_junit_partial_generated_phase_is_error_and_later_phase_is_skipped(model, tmp_path):
+def test_generated_scope_reduces_examples_before_execution(model, tmp_path):
     report = execute(model, tmp_path, input_mode="generated", max_input_attempts=1)
     suite = junit(report).find("./testsuite[@name='testwalker.property']")
-    # --cases=1 completes the first phase; the combined phase cannot attempt any input.
-    assert suite.get("tests") == "2" and suite.get("skipped") == "1"
+    # The combined phase is outside the selected scope, so it is not a skipped test.
+    assert report["status"] == "PASS"
+    assert suite.get("tests") == "1" and suite.get("skipped") == "0"
     assert report["input_attempts"] == 1
     from unittest.mock import patch
 
@@ -610,14 +645,143 @@ def test_junit_partial_generated_phase_is_error_and_later_phase_is_skipped(model
             path_generator=planned,
             input_mode="generated",
             cases=5,
-            max_input_attempts=1,
+            max_input_attempts=2,
             log=lambda *_: None,
         )
     suite = junit(report).find("./testsuite[@name='testwalker.property']")
-    assert suite.get("tests") == "2" and suite.get("errors") == "1" and suite.get("skipped") == "1"
-    detail = json.loads(suite.find("./testcase/error").text)
-    assert detail["test"]["phase"]["max_examples"] == 5
-    assert len([case for case in detail["attempts"] if case.get("attempted", True)]) == 1
+    assert report["status"] == "PASS"
+    assert suite.get("tests") == "1" and suite.get("errors") == "0" and suite.get("skipped") == "0"
+    detail = json.loads(suite.find("./testcase/system-out").text)
+    assert detail["test"]["phase"]["requested_max_examples"] == 5
+    assert detail["test"]["phase"]["max_examples"] == 2
+    assert len(detail["attempts"]) == report["input_attempts"] == 2
+    assert report["coverage"]["properties"]["completed"] == 0
+    inventory = json.loads((Path(report["directory"]) / "plan.json").read_text())
+    assert inventory["tests"][0]["phase"]["max_examples"] == 2
+
+
+@pytest.mark.parametrize("shrink", [True, False])
+@pytest.mark.parametrize("limit", [1, 2])
+def test_observed_defect_survives_limit_during_reproduction(model, tmp_path, monkeypatch, shrink, limit):
+    from hypothesis import strategies as st
+
+    from testwalker import properties
+
+    monkeypatch.setattr(properties, "strategy", lambda _: st.just(5))
+    report = execute(
+        model, tmp_path, bug=True, input_mode="generated", max_input_attempts=limit, shrink=shrink
+    )
+    assert report["status"] == "FAIL"
+    assert report["input_attempts"] <= limit
+    assert all(case["status"] == "FAIL" for case in report["cases"])
+    assert report["counterexample"]["input"] == {"Places": 5}
+    if limit == 1:
+        assert report["counterexample"]["minimization_limited"]
+    replay = json.loads((Path(report["directory"]) / "replay.json").read_text())
+    assert replay["input"] == {"Places": 5}
+    root = junit(report)
+    assert root.get("failures") == "2" and root.get("errors") == "0"
+
+
+def test_uncertain_selected_input_remains_inconclusive(model, tmp_path):
+    def uncertain(ctx):
+        raise Inconclusive("The input outcome is ambiguous")
+
+    report = execute(
+        model,
+        tmp_path,
+        input_mode="generated",
+        max_input_attempts=2,
+        hooks=hook_functions(after_case=uncertain),
+    )
+    assert report["status"] == "INCONCLUSIVE"
+    assert report["input_attempts"] == 1
+    suite = junit(report).find("./testsuite[@name='testwalker.property']")
+    assert suite.get("errors") == "1" and suite.get("skipped") == "1"
+    assert "ambiguous" in report["error"]
+
+
+def test_small_input_selection_still_requires_global_audit(model, tmp_path):
+    class DeferredOracle(Oracle):
+        def check(self, *args):
+            result = super().check(*args)
+            result["checks"] = []
+            return result
+
+        def audit_globals(self, observations, rules):
+            assert len([entry for entry in observations if "source" in entry]) == 2
+            return [{"rule": rule, "scope": "global", "status": "met"} for rule in rules]
+
+    report = execute(model, tmp_path, input_mode="generated", max_input_attempts=2, oracle=DeferredOracle())
+    assert report["status"] == "PASS"
+    assert report["coverage"]["global requirements"]["verified"] == 1
+    assert report["global_audit"]
+
+
+def test_limited_shrinking_retains_failing_input_and_screenshot_after_passing_candidate(
+    model, tmp_path, monkeypatch
+):
+    from hypothesis import strategies as st
+
+    from testwalker import properties
+
+    monkeypatch.setattr(properties, "strategy", lambda _: st.integers(0, 100))
+
+    class BuggyBrowser(Browser):
+        def pursue(self, *args, **kwargs):
+            super().pursue(*args, **kwargs)
+            if kwargs.get("fields") and int(kwargs["data"]["Places"]) >= 5:
+                self.state = "accepted"
+
+        def screenshot(self, path):
+            Path(path).write_bytes(b"\x89PNG\r\n\x1a\n" + self.state.encode())
+
+    report = run(
+        model,
+        "http://example.test",
+        output=tmp_path,
+        client=Client(),
+        browser=BuggyBrowser(model),
+        oracle=Oracle(),
+        path_generator=planned,
+        input_mode="generated",
+        cases=30,
+        max_input_attempts=5,
+        log=lambda *_: None,
+    )
+    assert report["status"] == "FAIL"
+    assert report["input_attempts"] == 5
+    assert report["cases"][-1]["status"] == "PASS"
+    failed = report["counterexample"]
+    assert failed["status"] == "FAIL" and failed["minimization_limited"]
+    phase = next(test for test in report["tests"] if test["kind"] == "property")
+    assert phase["screenshot"] == failed["screenshot"] != report["cases"][-1]["screenshot"]
+    replay = json.loads((Path(report["directory"]) / "replay.json").read_text())
+    assert replay["input"] == failed["input"]
+
+
+def test_finite_domain_can_complete_selected_scope_below_input_limit(model, tmp_path, monkeypatch):
+    from hypothesis import strategies as st
+
+    from testwalker import properties
+
+    monkeypatch.setattr(properties, "strategy", lambda _: st.just(2))
+    report = run(
+        model,
+        "http://example.test",
+        output=tmp_path,
+        client=Client(),
+        browser=Browser(model),
+        oracle=Oracle(),
+        path_generator=planned,
+        input_mode="generated",
+        cases=5,
+        max_input_attempts=2,
+        log=lambda *_: None,
+    )
+    assert report["status"] == "PASS" and report["input_attempts"] == 1
+    assert report["coverage"]["property phases"] == {"completed": 1, "total": 1, "available": 2}
+    assert report["test_summary"]["SKIPPED"] == 0
 
 
 def test_junit_generated_failure_groups_shrink_attempts_and_links_replay(model, tmp_path, monkeypatch):

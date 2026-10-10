@@ -11,6 +11,7 @@ from .browser_runtime import connect
 from .config import RuntimeConfig, parse_http_url
 from .graphwalker import generate_path
 from .hooks import Hooks
+from .input_strategies import StrategyProvider, load_policy
 from .model import load_model
 from .policy import exploration_model
 from .resources import asset
@@ -51,6 +52,37 @@ def parser():
     validate.add_argument("--model", type=Path, required=True)
     hosting = commands.add_parser("serve", help="Serve the demo website")
     hosting.add_argument("--port", type=int, default=4173)
+    for mode in ("sitemap", "url"):
+        discovery = commands.add_parser(
+            f"discover-{mode}", help=f"Generate a draft model from a {mode}, without AI"
+        )
+        discovery.add_argument(f"--{mode}", type=Path if mode == "sitemap" else str, required=True)
+        discovery.add_argument("--output", type=Path, required=True, help="New model JSON filename")
+        discovery.add_argument(
+            "--config", type=Path, help="Optional browser properties; no API key or GraphWalker required"
+        )
+        discovery.add_argument("--headed", action="store_true")
+        discovery.add_argument(
+            "--hooks", type=Path, help="Trusted Python discovery hooks (separate from test lifecycle hooks)"
+        )
+        discovery.add_argument("--max-pages", type=positive, default=50)
+        discovery.add_argument("--max-actions", type=positive, default=200)
+        discovery.add_argument("--timeout-ms", type=int, default=10000)
+        discovery.add_argument("--settle-ms", type=int, default=300)
+        discovery.add_argument("--no-screenshots", action="store_true")
+        discovery.add_argument("--no-dom", action="store_true")
+        discovery.add_argument("--no-network", action="store_true")
+        discovery.add_argument("--max-json-bytes", type=positive, default=1048576)
+        discovery.add_argument("--max-network-requests", type=positive, default=1000)
+        discovery.add_argument("--debug", action="store_true")
+        if mode == "url":
+            discovery.add_argument(
+                "--depth", type=int, default=1, help="Link/submission depth from the seed (0–10)"
+            )
+            discovery.add_argument(
+                "--no-submit-forms", action="store_true", help="Inspect forms without submitting them"
+            )
+            discovery.add_argument("--values", type=Path, help="JSON field defaults and per-page overrides")
     plan = commands.add_parser("plan", help="Validate and traverse a model without a browser or API calls")
     plan.add_argument("--model", type=Path)
     plan.add_argument("--site", choices=("booking", "feedback", "trailhead"), default="booking")
@@ -70,16 +102,32 @@ def parser():
             )
         exploration_arguments(command)
         command.add_argument(
-            "--cases", type=positive, default=3, help="Generated cases per field and combined phase"
+            "--cases",
+            type=positive,
+            default=1,
+            help="Hypothesis examples per phase (default 1); focused mode plans each constraint separately",
         )
         command.add_argument(
-            "--input-mode", choices=("all", "boundaries", "generated", "none"), default="all"
+            "--input-mode",
+            choices=("focused", "boundaries", "generated", "all", "none"),
+            default="focused",
+            help="Hypothesis coverage: focused (default), exact boundaries, broad generation, both, or none",
+        )
+        command.add_argument(
+            "--input-strategies",
+            type=Path,
+            help="JSON strategy settings and per-field overrides for focused mode",
+        )
+        command.add_argument(
+            "--strategy-provider",
+            type=Path,
+            help="Explicitly load a trusted Python input_strategy(context, default) extension",
         )
         command.add_argument(
             "--max-input-attempts",
             type=positive,
             default=1000,
-            help="Total input attempts across campaigns, including shrinking",
+            help="Select up to N property inputs in model order; also caps shrinking and reproduction",
         )
         command.add_argument("--no-shrink", action="store_true", help="Disable Hypothesis failure shrinking")
         command.add_argument("--max-actions", type=positive, default=25)
@@ -137,6 +185,12 @@ def plan_run(model, args, path_generator):
 
 
 def live_run(model, args, config, path_generator):
+    policy = load_policy(args.input_strategies, model.data_sets)
+    if args.input_mode != "focused" and (args.input_strategies or args.strategy_provider):
+        raise ValueError("Input strategy configuration and providers require --input-mode focused")
+    if args.replay and (args.input_strategies or args.strategy_provider):
+        raise ValueError("Replay uses its saved input; do not supply input strategy overrides")
+    provider = StrategyProvider.load(args.strategy_provider)
     options = {
         key: getattr(args, key)
         for key in (
@@ -157,6 +211,7 @@ def live_run(model, args, config, path_generator):
             "walks",
         )
     }
+    options.update(input_strategies=policy, strategy_provider=provider)
     with connect(config, headed=args.headed, cdp_url=args.cdp_url, keep_browser_open=args.keep_browser_open):
         # Browser Harness captures the named connection at import time.
         # Establish it before importing Jev, the engine or application hooks.
@@ -186,9 +241,59 @@ def live_run(model, args, config, path_generator):
     return {"PASS": 0, "FAIL": 1, "INCONCLUSIVE": 2}[report["status"]]
 
 
+def discovery_run(args):
+    from .discovery import DiscoveryOptions, discover_sitemap, discover_url
+    from .discovery.browser import load_hooks
+    from .discovery.crawler import output_paths
+
+    output, _ = output_paths(args.output)
+    options = DiscoveryOptions(
+        depth=getattr(args, "depth", 0),
+        submit_forms=not getattr(args, "no_submit_forms", False),
+        max_pages=args.max_pages,
+        max_actions=args.max_actions,
+        timeout_ms=args.timeout_ms,
+        settle_ms=args.settle_ms,
+        headed=args.headed,
+        screenshots=not args.no_screenshots,
+        dom=not args.no_dom,
+        network=not args.no_network,
+        max_json_bytes=args.max_json_bytes,
+        max_network_requests=args.max_network_requests,
+    )
+    config = RuntimeConfig.load(args.config, discovery=True) if args.config else None
+    values_path = getattr(args, "values", None)
+    values = json.loads(values_path.read_text()) if values_path else None
+    function = discover_sitemap if args.command == "discover-sitemap" else discover_url
+    result = function(
+        args.sitemap if args.command == "discover-sitemap" else args.url,
+        output=output,
+        config=config,
+        options=options,
+        values=values,
+        hooks=load_hooks(args.hooks),
+    )
+    graph = result.model["models"][0]
+    print(f"Draft: {output} ({len(graph['vertices'])} states, {len(graph['edges'])} journeys)")
+    print(f"Discovery inventory: {output.with_suffix('.discovery.json')}")
+    for note in dict.fromkeys(result.inventory["review"]):
+        print(f"Review: {note}")
+    capture_errors = sum(len(v["capture_errors"]) for v in result.inventory["visits"])
+    print(f"Discovery artifacts: {output.with_suffix('.discovery')}")
+    if capture_errors:
+        print(f"Evidence: {capture_errors} capture errors; see visits in the inventory")
+    result.close()
+    incomplete = len(result.inventory["failed"]) + len(result.inventory["pending"]) + capture_errors
+    if incomplete:
+        print(f"Partial discovery: {incomplete} failed/pending visits or capture errors; see the inventory")
+    return 2 if incomplete else 0
+
+
 def main(argv=None):
     args = parser().parse_args(argv)
     try:
+        if args.command.startswith("discover-"):
+            return discovery_run(args)
         if args.command == "serve":
             with serve(args.port) as url:
                 print(f"Demo site: {url}", flush=True)

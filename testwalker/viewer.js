@@ -55,8 +55,57 @@ function related(test) {
 }
 function details(parent, title, data) {
   const box = element("details");
-  box.append(element("summary", title), element("pre", json(data)));
+  const body = element("pre");
+  let loaded = false;
+  box.append(element("summary", title), body);
+  box.addEventListener("toggle", async () => {
+    if (!box.open || loaded) return;
+    loaded = true;
+    body.textContent = "Loading evidence…";
+    try {
+      body.textContent = json(typeof data === "function" ? await data() : data);
+    } catch (error) {
+      loaded = false;
+      body.textContent = `${error.message} Keep the evidence folder beside report.html. Full evidence is also in report.json. Close and reopen this section to retry.`;
+    }
+  });
   parent.append(box);
+}
+window.testwalkerDecisionChunks = {};
+const decisionLoads = new Map();
+function loadDecisionChunk(index) {
+  if (!decisionLoads.has(index)) {
+    const promise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = report.decision_chunks.files[index];
+      script.onload = () => {
+        script.remove();
+        const data = window.testwalkerDecisionChunks[index];
+        if (Array.isArray(data)) resolve(data);
+        else reject(new Error("Decision evidence is invalid."));
+      };
+      script.onerror = () => {
+        script.remove();
+        reject(new Error("Decision evidence could not be loaded."));
+      };
+      document.head.append(script);
+    }).catch((error) => {
+      decisionLoads.delete(index);
+      throw error;
+    });
+    decisionLoads.set(index, promise);
+  }
+  return decisionLoads.get(index);
+}
+async function decisionEvidence(start, end) {
+  if (!report.decision_chunks) return (report.decisions || []).slice(start, end);
+  if (end <= start) return [];
+  const size = report.decision_chunks.size;
+  const first = Math.floor(start / size), last = Math.floor((end - 1) / size);
+  const chunks = await Promise.all(
+    Array.from({ length: last - first + 1 }, (_, i) => loadDecisionChunk(first + i)),
+  );
+  return chunks.flat().slice(start - first * size, end - first * size);
 }
 function choose(id) {
   selected = id;
@@ -342,8 +391,12 @@ function renderDetail() {
   const attempts = (t.attempt_indices || []).map((i) => report.cases[i]);
   let record = t;
   if (attempts.length) {
-    if (attemptIndex === null || attemptIndex >= attempts.length)
-      attemptIndex = attempts.length - 1;
+    if (attemptIndex === null || attemptIndex >= attempts.length) {
+      const lastFailure = t.status === "FAIL"
+        ? attempts.map((attempt) => attempt.status).lastIndexOf("FAIL")
+        : -1;
+      attemptIndex = lastFailure >= 0 ? lastFailure : attempts.length - 1;
+    }
     record = attempts[attemptIndex];
     const line = element("label", undefined, "attempt-line");
     line.append(element("span", "Input attempt"));
@@ -375,6 +428,8 @@ function renderDetail() {
       ),
     );
     if (record.error) parent.append(element("p", record.error, "reason"));
+    if (record.minimization_note)
+      parent.append(element("p", record.minimization_note, "reason"));
   }
   const facts = element("dl", undefined, "facts");
   for (const [label, value] of [
@@ -466,10 +521,10 @@ function renderDetail() {
     });
   const trace = t.trace_range || [0, 0],
     decisions = t.decision_range || [0, 0];
-  details(parent, "Actions & Jev decisions", {
+  details(parent, "Actions & Jev decisions", async () => ({
     actions: (report.trace || []).slice(...trace),
-    decisions: (report.decisions || []).slice(...decisions),
-  });
+    decisions: await decisionEvidence(...decisions),
+  }));
   details(parent, "Complete case evidence", {
     test: t,
     attempt: attempts.length ? record : undefined,
@@ -480,6 +535,17 @@ $("run-status").textContent = report.status;
 $("run-status").className = "badge " + report.status;
 $("run-meta").textContent =
   `${report.started} · seed ${report.seed} · ${report.url}`;
+const propertyPhases = report.coverage?.["property phases"];
+if (propertyPhases) {
+  const progress = $("property-progress");
+  progress.hidden = false;
+  progress.textContent =
+    `Selected property phases passed: ${propertyPhases.completed}/${propertyPhases.total}`;
+  const campaigns = report.coverage?.properties;
+  if (campaigns)
+    progress.textContent +=
+      ` · Full property campaigns completed: ${campaigns.completed}/${campaigns.total}`;
+}
 const count = (status) => tests.filter((t) => t.status === status).length;
 for (const [value, label] of [
   [

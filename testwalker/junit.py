@@ -28,6 +28,7 @@ def evidence(report, test):
             stop=report.get("stop"),
             failure=report.get("failure"),
             coverage=report["coverage"],
+            scope=report.get("scope", {}),
             planning=report["planning"],
             global_audit=report.get("global_audit"),
             hooks=report["hooks"],
@@ -83,14 +84,24 @@ def write_junit(directory, report):
             **{key: str(value) for key, value in counts.items()},
         )
         props = ET.SubElement(suite, "properties")
-        for name, value in {
+        suite_properties = {
             "model": report["model"],
             "model_hash": report["model_hash"],
             "seed": report["seed"],
             "report": "report.html",
             "inventory": "plan.json",
             "planning_complete": report["planning"]["complete"],
-        }.items():
+        }
+        selection = report.get("scope", {}).get("property_selection")
+        if selection:
+            suite_properties.update(
+                property_selected_phases=selection["selected_phases"],
+                property_available_phases=selection["available_phases"],
+                property_selected_examples=selection["selected_examples"],
+                property_available_examples=selection["available_examples"],
+                property_input_limit=selection["input_limit"],
+            )
+        for name, value in suite_properties.items():
             ET.SubElement(props, "property", name=name, value=xml_text(value))
         for test in tests:
             case = ET.SubElement(

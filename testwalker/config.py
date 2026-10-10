@@ -80,7 +80,7 @@ def read_properties(path):
 @dataclass(frozen=True)
 class RuntimeConfig:
     path: Path
-    graphwalker: Path
+    graphwalker: Path | None
     api_key: str = field(repr=False)
     model: str = "jev-latest"
     cdp_url: str = ""
@@ -90,12 +90,12 @@ class RuntimeConfig:
     text: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def load(cls, path, *, live=False):
+    def load(cls, path, *, live=False, discovery=False):
         path = Path(path).expanduser().resolve()
         values = read_properties(path)
-        if not values.get("GRAPHWALKER_BIN"):
+        if not discovery and not values.get("GRAPHWALKER_BIN"):
             raise ValueError("Set GRAPHWALKER_BIN in the properties file to your GraphWalker executable")
-        binary = executable(values["GRAPHWALKER_BIN"], path.parent, "GRAPHWALKER_BIN")
+        binary = None if discovery else executable(values["GRAPHWALKER_BIN"], path.parent, "GRAPHWALKER_BIN")
         if live and not values.get("TYPESAFE_API_KEY", "").strip():
             raise ValueError("Set TYPESAFE_API_KEY in the same properties file for live Jev testing")
         cdp_url = values.get("CDP_URL", "")

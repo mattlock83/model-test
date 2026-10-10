@@ -16,6 +16,8 @@
         <span id="run-status" class="badge">__STATUS__</span>
       </div>
       <div id="run-meta" class="muted"></div>
+      <p id="property-progress" class="muted" hidden></p>
+      <p id="scope-note" class="muted">__SCOPE_NOTE__</p>
     </header>
     <div id="metrics" class="metrics"></div>
     <main>
@@ -115,10 +117,6 @@
         <summary>Run limits, coverage &amp; planning</summary>
         <pre id="run-detail"></pre>
       </details>
-      <details class="run-evidence">
-        <summary>Full execution evidence</summary>
-        <pre>__ESCAPED_EVIDENCE__</pre>
-      </details>
       <footer>
         <nav>
           <a href="report.json">Report JSON</a
@@ -127,17 +125,18 @@
           ><a href="junit.xml">JUnit XML</a
           ><a id="replay-link" href="replay.json" hidden>Replay input</a>
         </nav>
-        <p id="scope-note">__SCOPE_NOTE__</p>
         <p>
           Graph paths and boundary inputs are planned in advance. Hypothesis
           draws and shrinking happen during execution. Screenshots show the
           captured viewport; skipped cases have no screenshot.
+          Jev transcripts load when expanded. Keep the evidence and screenshots
+          folders beside this HTML file when moving or sharing the report.
         </p>
       </footer>
     </main>
     <noscript
       >Enable JavaScript to explore the graph and cases. The report JSON and
-      full execution evidence remain available above.</noscript
+      complete execution evidence remain available through the Report JSON link.</noscript
     >
     <script id="run-data" type="application/json">
       __REPORT_JSON__

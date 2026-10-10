@@ -119,9 +119,9 @@
             "business": {
               "description": "Booking policy page headed Clear plans. Fair policies.",
               "rules": [
-                "Reviewing an adventure does not reserve places.",
-                "Final cancellation gives a full refund including the conservation gift.",
-                "Each booking receives one refund only.",
+                "The policy explains that reviewing an adventure is a draft and places are reserved only after final confirmation.",
+                "The policy explains that final cancellation refunds the full booking charge, including the conservation gift.",
+                "The policy explains that each booking receives only one refund.",
                 "The main navigation offers Home, Adventures, Equipment, My account and Help."
               ]
             }
@@ -325,7 +325,7 @@
           ],
           "properties": {
             "business": {
-              "description": "Cancellation request form headed Request a cancellation, showing the existing booking reference and proposed full refund.",
+              "description": "Cancellation request form headed Request a cancellation, showing the existing booking reference and proposed full refund, with no validation error displayed.",
               "rules": [
                 "A cancellation reason can be supplied.",
                 "The proposed full refund is displayed.",
@@ -2251,9 +2251,9 @@
             "states": 100
           },
           "rules": [
-            "Invalid adventure booking details are rejected with explanations identifying the affected fields.",
-            "Invalid member profile details are rejected with explanations identifying the affected fields.",
-            "Invalid cancellation reasons are rejected with an explanation identifying the problem.",
+            "Submitting invalid adventure planning details is rejected, and the validation explanations identify the affected adventure planning fields.",
+            "Submitting invalid member profile details is rejected, and the validation explanations identify the affected member profile fields.",
+            "Submitting an invalid cancellation reason is rejected, and a validation explanation identifies the cancellation reason.",
             "The main navigation remains available throughout every activity.",
             "Adventure prices are AUD 80 per traveller for Ridge walk and AUD 120 per traveller for River paddle."
           ],

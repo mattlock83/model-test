@@ -828,3 +828,228 @@ def test_screenshot_uses_owned_tab_and_never_calls_jev(tmp_path):
     assert (tmp_path / "shot.png").read_bytes() == png
     assert calls == [("Page.captureScreenshot", {"format": "png", "captureBeyondViewport": False})]
     assert not client.requests
+
+
+def test_uncertain_navigation_can_scroll_to_observed_link_without_editing_values():
+    class NavigationDOM(DOM):
+        scrolled = False
+        arrived = False
+
+        def observe(self, screenshot=False):
+            page = super().observe(screenshot=False)
+            if self.arrived:
+                page["text"] = "Edit your profile"
+            elif self.scrolled:
+                page["actions"] = [
+                    {
+                        "id": "revise",
+                        "node": 20,
+                        "kind": "click",
+                        "role": "link",
+                        "label": "Clear errors and revise",
+                    }
+                ]
+            else:
+                page["actions"].append({"id": "scroll_down", "kind": "scroll", "label": "Scroll down"})
+                page["semantics"] = {
+                    "available_links": [
+                        {"label": "Clear errors and revise", "in_viewport": False, "scroll_direction": "down"}
+                    ]
+                }
+            return page
+
+        def act(self, action, page, text=None):
+            super().act(action, page, text)
+            if action["kind"] == "scroll":
+                self.scrolled = True
+            elif action["node"] == 20:
+                self.arrived = True
+
+    class UncertainOperation(Decisions):
+        def ask(self, state, questions):
+            result = super().ask(state, questions)
+            if "operation" in questions and state["accessibility"].get("available_links"):
+                result["answers"]["operation"]["confidence"] = 0.7
+            return result
+
+    def choose(state, questions):
+        if "navigation_control" in questions:
+            return {"navigation_control": "offscreen_0"}
+        if state["page"]["text"] == "Edit your profile":
+            return {"operation": "DONE"}
+        return {"operation": "CLICK", "click_target": "1"}
+
+    client = UncertainOperation(choose)
+    driver = JevBrowser(client, browser_factory=NavigationDOM)
+    driver.reset("http://demo.test")
+    driver.pursue("Clear errors and revise the profile")
+    assert driver.browser.events == [("scroll", None), ("click", None)]
+    assert driver.browser.value == "old value"
+    assert driver.browser.arrived
+    assert sum("navigation_control" in q for _, q in client.requests) == 1
+
+
+@pytest.mark.parametrize("focused", ["uncertain", "refused", "unavailable"])
+def test_focused_navigation_never_promotes_uncertainty_or_refusal_to_success(focused):
+    class Client(Decisions):
+        def ask(self, state, questions):
+            result = super().ask(state, questions)
+            if "operation" in questions:
+                result["answers"]["operation"]["confidence"] = 0.7
+            elif focused == "uncertain":
+                result["answers"]["navigation_control"]["confidence"] = 0.7
+            elif focused == "refused":
+                result["answers"]["navigation_control"] = {"refusal": "no answer"}
+            return result
+
+    client = Client(
+        lambda *_: {
+            "operation": "CLICK",
+            "navigation_control": "UNAVAILABLE" if focused == "unavailable" else "2",
+        }
+    )
+    driver = JevBrowser(client, browser_factory=DOM)
+    driver.reset("http://demo.test")
+    with pytest.raises(Inconclusive):
+        driver.pursue("Continue")
+    assert not driver.browser.events
+    assert len(client.requests) == 2
+
+
+@pytest.mark.parametrize("refused", [True, False])
+def test_navigation_focus_does_not_retry_refused_operations_or_data_entry_decisions(refused):
+    class Client(Decisions):
+        def ask(self, state, questions):
+            result = super().ask(state, questions)
+            result["answers"]["operation"] = (
+                {"refusal": "no answer"} if refused else {**result["answers"]["operation"], "confidence": 0.7}
+            )
+            return result
+
+    client = Client(lambda *_: {"operation": "CLICK"})
+    driver = JevBrowser(client, browser_factory=DOM)
+    driver.reset("http://demo.test")
+    with pytest.raises(Inconclusive):
+        driver._decision(driver.observe(), "Submit the supplied data", [], {} if refused else {"Places": {}})
+    assert len(client.requests) == 1
+    assert not driver.browser.events
+
+
+def test_large_global_audit_shares_rule_text_without_losing_observations(model):
+    rule = "A detailed verified business requirement. " * 30
+    records = [
+        {
+            "status": "PASS",
+            "observed": "accepted",
+            "expected": "accepted",
+            "input": {"Places": i},
+            "evidence": {"text": f"Observation {i}: " + "x" * 1200},
+            "checks": [{"rule": rule, "status": "met"}],
+        }
+        for i in range(80)
+    ]
+    client = Decisions(lambda *_: {"global_0": "met"})
+    Oracle(client, model).audit_globals(records, model.business["rules"])
+    saved_observations = []
+    for context, _ in client.requests:
+        if "executed_scenarios" not in context:
+            continue
+        assert len(json.dumps(context)) <= 16000
+        definitions = context["verified_requirement_definitions"]
+        for saved in context["executed_scenarios"]:
+            assert [definitions[r] for r in saved["verified_requirement_ids"]] == [rule]
+            saved_observations.append(saved)
+    assert len(saved_observations) == len(records)
+    for original, saved in zip(records, saved_observations, strict=True):
+        assert saved["submitted_values"] == original["input"]
+        assert saved["visible_text"] == original["evidence"]["text"]
+
+
+def test_global_audit_still_stops_when_distinct_evidence_exceeds_budget(model):
+    records = [
+        {
+            "status": "PASS",
+            "observed": "accepted",
+            "expected": "accepted",
+            "input": {"Places": i, "Extra": "x" * 1000},
+            "evidence": {"text": f"Observation {i}: " + "x" * 1700},
+            "checks": [{"rule": "A verified requirement", "status": "met"}],
+        }
+        for i in range(80)
+    ]
+    client = Decisions(lambda *_: {})
+    with pytest.raises(Inconclusive, match="evidence budget"):
+        Oracle(client, model).audit_globals(records, model.business["rules"])
+    assert not client.requests
+
+
+@pytest.mark.parametrize(
+    "verdicts, expected",
+    [
+        (["met", "broken"], "broken"),
+        (["met", "uncertain"], "uncertain"),
+        (["not_applicable", "met"], "met"),
+        (["not_applicable", "not_applicable"], "uncertain"),
+        (["met", "met"], "met"),
+    ],
+)
+def test_global_audit_aggregates_batches_without_hiding_later_failures(model, verdicts, expected):
+    records = [
+        {
+            "status": "PASS",
+            "observed": "accepted",
+            "expected": "accepted",
+            "evidence": {"text": f"Observation {i}: " + "x" * 1500},
+        }
+        for i in range(16)
+    ]
+    choices = iter(verdicts)
+    client = Decisions(lambda _, q: {"global_0": next(choices)} if "global_0" in q else {})
+    result = Oracle(client, model).audit_globals(records, model.business["rules"])
+    assert sum("global_0" in q for _, q in client.requests) == 2
+    assert result[0]["status"] == expected
+    assert [b["status"] for b in result[0]["batch_answers"]] == verdicts
+
+
+def test_validation_audit_keeps_accepted_inputs_and_does_not_assume_rejection(model):
+    records = [
+        {
+            "status": "PASS",
+            "observed": "accepted" if i % 2 == 0 else "rejected",
+            "expected": "accepted" if i % 2 == 0 else "rejected",
+            "input": {"Places": 5},
+            "violations": [{"field": "Places", "violations": ["above maximum"]}],
+            "evidence": {"text": f"Observation {i}: " + "x" * 1500},
+        }
+        for i in range(16)
+    ]
+
+    def choose(state, questions):
+        if "input_scope_0" in questions:
+            return {"input_scope_0": "data_0"}
+        return {"global_0": "broken"}
+
+    client = Decisions(choose)
+    result = Oracle(client, model).audit_globals(records, model.business["rules"])
+    assert result[0]["status"] == "broken"
+    assert result[0]["evidence_states"] == ["accepted", "rejected"]
+    audited = [state for state, q in client.requests if "global_0" in q]
+    assert any(s["observed_state"] == "accepted" for state in audited for s in state["executed_scenarios"])
+
+
+def test_global_audit_with_no_observations_cannot_pass(model):
+    client = Decisions(lambda *_: {"global_0": "met"})
+    result = Oracle(client, model).audit_globals([], model.business["rules"])
+    assert all(check["status"] == "uncertain" for check in result)
+    assert not client.requests
+
+
+def test_uncertain_validation_scope_preserves_generic_evidence_selection(model):
+    class Client(Decisions):
+        def ask(self, state, questions):
+            result = super().ask(state, questions)
+            result["answers"]["input_scope_0"]["confidence"] = 0.7
+            return result
+
+    client = Client(lambda *_: {"input_scope_0": "data_0"})
+    assert Oracle(client, model)._validation_scopes(model.business["rules"]) == [None]

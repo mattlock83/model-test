@@ -8,6 +8,8 @@ dependencies = [
   "jev-ultrafast @ git+https://github.com/browser-use/jev-ultrafast.git@1231850a0bf1a0c0341fe408ef1668dbbfdfac46",
   "hypothesis>=6.140,<7",
   "python-dotenv>=1,<2",
+  "playwright>=1.55,<2",
+  "crawlee[playwright]>=1.10,<2",
 ]
 
 [project.scripts]
@@ -30,6 +32,8 @@ packages = ["testwalker"]
 "examples" = "testwalker/data/examples"
 "testwalker.properties.example" = "testwalker/data/testwalker.properties.example"
 "docs/hooks.md" = "testwalker/data/hooks.md"
+"docs/discovery.md" = "testwalker/data/discovery.md"
+"docs/input-strategies.md" = "testwalker/data/input-strategies.md"
 
 [tool.hatch.build.targets.sdist]
 include = ["testwalker", "models", "dist", "docs", "examples", "tests", "pyproject.toml", "README.md", "testwalker.properties.example", "uv.lock"]

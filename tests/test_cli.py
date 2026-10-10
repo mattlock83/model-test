@@ -7,6 +7,22 @@ from testwalker import cli
 from testwalker.resources import asset
 
 
+def test_cli_defaults_to_focused_boundaries():
+    args = cli.parser().parse_args(["demo"])
+    assert args.input_mode == "focused" and args.cases == 1
+
+
+def test_invalid_strategy_field_does_not_start_chrome(tmp_path, monkeypatch, capsys):
+    policy = tmp_path / "inputs.json"
+    policy.write_text('{"data sets": {"Unknown dataset": {}}}')
+    monkeypatch.setattr(
+        cli, "connect", lambda *_a, **_k: pytest.fail("Invalid strategies must not start Chrome")
+    )
+    result = cli.main(["demo", "--config", config_file(tmp_path), "--input-strategies", str(policy)])
+    assert result == 2
+    assert "Unknown strategy data set" in capsys.readouterr().err
+
+
 def config_file(tmp_path, key="unit-test-key"):
     path = tmp_path / "runtime.properties"
     path.write_text(f"GRAPHWALKER_BIN={sys.executable}\nTYPESAFE_API_KEY={key}\n")

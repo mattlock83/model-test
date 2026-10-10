@@ -7,13 +7,27 @@ There are **no UI selectors, page objects, browser action lists or assertion exp
 - **GraphWalker Rust** generates seeded paths through the graph.
 - **Jev Ultrafast + Browser Harness** discover and operate observed browser controls.
 - **TypeSafe Jev** independently identifies the current business state and judges its requirements.
-- **Hypothesis** generates input combinations, covers boundaries and shrinks reproducible failures.
+- **Hypothesis** runs input testing, generating focused constraint cases by default and shrinking reproducible failures. Broader combinations are optional.
 
 The property-testing layer now uses Python's Hypothesis directly. [Hegel is built on Hypothesis](https://hegel.dev/); its TypeScript wrapper was removed with the JavaScript runner. This version does not invoke the Hegel protocol or claim to retain the Hegel package.
 
+**Start with the [plain-English testing guide](docs/testing.md)** for the workflow diagram, copyable commands, input counts, resets, Jev allowances and result meanings. The sections below provide installation and detailed reference information.
+
+## Generate an initial model
+
+Discovery needs Chrome but no Jev key or GraphWalker executable:
+
+```bash
+uv sync
+uv run testwalker discover-sitemap --sitemap sitemap.xml --output models/discovered.json
+uv run testwalker discover-url --url http://127.0.0.1:4173/ --depth 1 --headed --output models/explored.json
+```
+
+The explorer uses Crawlee’s Python `PlaywrightCrawler` for scheduling and browser management. Sitemap discovery only inspects listed pages. URL discovery follows same-origin links and submits forms one level deep by default. Use `--values` for field overrides and `--hooks` for custom widgets or setup calls. The output is a selector-free draft plus an inventory of observed forms, constraints, controls and unresolved items. Discovery also saves screenshots, rendered HTML/live DOM snapshots and endpoint traffic with JSON request/response bodies, linked to each visit. Accessibility checks remain the walker’s job. Business rules still need human review. See [discovery options, hooks and the Python API](docs/discovery.md).
+
 ## Use the framework
 
-Author and export your model in GraphWalker independently, using its editor or MCP with your preferred assistant. **This package does not create or edit graphs and does not expose an authoring MCP.** It consumes one exported GraphWalker JSON model with the [business specification](docs/model-format.md): state descriptions, journey intents, expected outcomes and input constraints. A bare navigation graph cannot supply missing business expectations.
+Author and export your model in GraphWalker independently, using its editor or MCP with your preferred assistant. Alternatively, [bootstrap a draft from a sitemap or URL](docs/discovery.md) without AI, then review it in GraphWalker. The package does not expose an authoring MCP. It consumes one exported GraphWalker JSON model with the [business specification](docs/model-format.md): state descriptions, journey intents, expected outcomes and input constraints. A bare navigation graph cannot supply missing business expectations.
 
 Install the local package with Python 3.12+ and [uv](https://docs.astral.sh/uv/getting-started/installation/):
 
@@ -61,7 +75,6 @@ testwalker run \
   --config testwalker.properties \
   --generator quick_random --edge-coverage 100 --state-coverage 100 \
   --walks 2 --max-steps 300 \
-  --input-mode all --cases 5 --max-input-attempts 300 \
   --max-calls 1000 --headed
 ```
 
@@ -69,21 +82,17 @@ The CLI starts Chrome with a dedicated profile and waits for its debugging endpo
 
 The execution components are independent of model authoring:
 
-```text
-GraphWalker export + runtime options + Jev credentials + optional hooks
-                              ↓
-                 Business model validation
-                              ↓
-             Seeded GraphWalker paths → verified coverage
-                              ↓
-             Hypothesis input campaigns → counterexamples
-                              ↓
-           Jev browser navigation + independent outcome checks
-                              ↓
-                    HTML / JSON / replay reports
+```mermaid
+flowchart TD
+    M[Business model + runtime options] --> P[Plan graph walks and select property scope]
+    P --> G[Walk the planned graph<br/>Jev navigation + independent state and rule checks]
+    G -->|Inputs enabled| H[Run selected property tests<br/>Reset, replay setup, submit input, verify outcome]
+    H --> A[Check coverage and outstanding global rules]
+    G -->|Inputs disabled| A
+    A --> R[Close owned browser and write reports]
 ```
 
-Browser navigation and outcome checks run at each graph checkpoint and input attempt. They are not a final check performed only after exploration.
+Property campaigns run after the graph walk. Each input attempt starts in a fresh tab and replays a setup route to its form. Browser navigation and outcome checks run throughout both phases. Graph-only runs proceed directly to the final checks. The [testing guide](docs/testing.md#what-happens-during-a-run) shows the loops and responsibilities in more detail.
 
 | Control | Meaning |
 | --- | --- |
@@ -91,12 +100,15 @@ Browser navigation and outcome checks run at each graph checkpoint and input att
 | `--edge-coverage`, `--state-coverage` | Required verified percentages. The other target retains its model value. Named coverage modes use both targets as their stop condition; an explicit native expression keeps its own stop condition. |
 | `--walks N` | Repeat graph traversal from the start with seeds `seed`, `seed+1`, etc. (1–100). Each walk must plan the targets. Verified coverage is the union. |
 | `--max-steps N` | Maximum graph elements per walk, including state checkpoints. A route exceeding this budget is inconclusive before browser execution. |
-| `--input-mode all` | Generated examples and explicit boundaries (default). |
+| `--input-mode all` | Generated examples and explicit boundaries; opt-in broader exploration. |
 | `--input-mode generated` | Hypothesis-generated examples only. |
-| `--input-mode boundaries` | Explicit boundary partitions only. |
+| `--input-mode focused` | Default: Hypothesis generates within separately planned constraint partitions. |
+| `--input-mode boundaries` | Exact boundary values, executed through Hypothesis. |
+| `--input-strategies PATH` | JSON generation defaults and per-field overrides for focused mode. |
+| `--strategy-provider PATH` | Trusted Python extension providing custom Hypothesis strategies for focused mode. |
 | `--input-mode none` | Graph journeys only; reports explicitly say input campaigns were disabled. Nominal data submission journeys still execute. |
-| `--cases N` | Generated examples per field and combined phase, per campaign (1–200, default 3). Shrinking can add attempts. |
-| `--max-input-attempts N` | Total attempted property cases across campaigns, including shrinking and replay (default 1000). Exhaustion is inconclusive. |
+| `--cases N` | Generated examples per phase (1–200, default 1). Focused mode has a phase per constraint partition; generated mode uses per-field and combined phases. Shrinking can add attempts. |
+| `--max-input-attempts N` | Select up to N property inputs in model order before execution (default 1000). Shrinking and reproduction share this attempt limit. Passing the selected scope can produce PASS. |
 | `--no-shrink` | Disable the shrinking phase. Hypothesis may still replay a failing example to confirm it. |
 | `--max-calls N` | Hard cap on Jev requests across the whole run (default 1000). |
 | `--max-actions N` | Maximum browser decision cycles per journey (default 25). |
@@ -104,6 +116,8 @@ Browser navigation and outcome checks run at each graph checkpoint and input att
 | `--hooks hooks.py` | Explicitly load optional trusted Python lifecycle extensions. |
 
 A small smoke run can use one walk and `--input-mode none`; deeper testing can add walks and `--input-mode all --cases 20`. Lower coverage targets change the selected scope, not the meaning of a failed business requirement. Global requirements must still be evidenced, so a short route can be inconclusive if it never exercises one. Runtime overrides never rewrite your input file; the report stores the effective model, targets and seeds.
+
+For a small input sample, use `--input-mode generated --cases 1 --max-input-attempts 2 --no-shrink`. This selects the first two property phases in model order, with one generated example each. If those checks, the selected graph walk and required business rules pass, the run passes. Remaining property phases are outside the selected scope and do not count as skipped tests. This deterministic sample does not represent every campaign or field. With larger `--cases` values, the limit can select only part of a generation phase; its planned example count is reduced before execution.
 
 Hooks can reset a backend, seed test data, call APIs, or make deterministic assertions around individual states and transitions. They are optional application code outside the graph. See [lifecycle hooks](docs/hooks.md) for events, ordering and failure behavior. Pure browser tests need no hooks; stateful applications often need a repeatable reset to make property testing meaningful.
 
@@ -147,14 +161,14 @@ After installing the package and creating the properties file:
 testwalker demo --headed
 testwalker demo --site feedback --headed
 testwalker demo --bug --headed
-testwalker demo --seed 42 --cases 3 --max-calls 1000 --headed
+testwalker demo --seed 42 --input-mode generated --cases 3 --max-calls 1000 --headed
 ```
 
 The demo starts its own local HTML server and opens a test tab in isolated Chrome. **A Jev key is required for browser testing; there is no local-only execution mode.** No OpenAI key is required. To work directly from this checkout, use `uv sync` once and prefix commands with `uv run`, for example `uv run testwalker demo --headed`.
 
 The booking demo now has **Home, Workshops, Our studio and Visit** pages with a shared menu, plus the booking, review, rejection and confirmation states. The selector-free business model contains **8 states and 35 journeys**, including navigation away from each booking state, links between information pages, and booking from the catalogue. The enquiry demo remains a separate small fixture.
 
-The booking demo's `--bug` switch deliberately permits five places although the model permits at most four. Its intended result is `FAIL` when Jev successfully navigates and verifies that case. The switch persists through the new menu links. A live run with `--generator new_york_street_sweeper --cases 1` passed all 35 journeys, all 8 states and 66 input attempts using 194 Jev calls at the default 0.85 confidence threshold. Both property campaigns completed and both global requirements were verified. This is one measured run; provider judgments and future runs can vary. Framework unit tests use mocked remote responses. Your key and an adequate call budget are required for live testing.
+The booking demo's `--bug` switch deliberately permits five places although the model permits at most four. Its intended result is `FAIL` when Jev successfully navigates and verifies that case. The switch persists through the new menu links. Before the boundary-default change, a live run with `--generator new_york_street_sweeper --cases 1` passed all 35 journeys, all 8 states and 66 input attempts using 194 Jev calls at the default 0.85 confidence threshold. Both property campaigns completed and both global requirements were verified. This is one measured run; provider judgments and future runs can vary. Framework unit tests use mocked remote responses. Your key and an adequate call budget are required for live testing.
 
 ## Larger example: Trailhead
 
@@ -168,7 +182,18 @@ testwalker demo --site trailhead --demo-hooks --headed \
   --input-mode none --max-steps 1000 --max-calls 250
 ```
 
-This visits 14 journeys and 14 states, including explicit invalid examples and both backend hook scenarios. For full coverage, use `--generator new_york_street_sweeper --edge-coverage 100 --state-coverage 100 --max-steps 1000 --max-calls 2500`; enable property campaigns separately with `--input-mode generated` or `all`. The example guide covers budgets, weighted exploration, targeted A*, chained routes, and injected inventory/refund defects.
+This visits 14 journeys and 14 states, including explicit invalid examples and both backend hook scenarios. For full coverage, use `--generator new_york_street_sweeper --edge-coverage 100 --state-coverage 100 --max-steps 1000 --max-calls 2500`; omit `--input-mode none` to use the default boundary campaigns, with a larger Jev allowance if needed. The example guide covers budgets, weighted exploration, targeted A*, chained routes, and injected inventory/refund defects.
+
+For full graph coverage and the recommended focused boundary checks, from the source checkout:
+
+```bash
+uv run testwalker demo --site trailhead --demo-hooks --headed \
+  --generator new_york_street_sweeper \
+  --edge-coverage 100 --state-coverage 100 --max-steps 1000 \
+  --max-calls 10000
+```
+
+This selects all seven campaigns and 186 focused Hypothesis phases, with one example per phase. Reproduction and shrinking can add attempts; no combined-field exploration runs by default. Increase `--cases` or configure per-field strategies without changing the model or runner; see [input strategies](docs/input-strategies.md). For broader exploration, explicitly add `--input-mode all --cases 20 --max-input-attempts 2000`; that offers up to 826 planned inputs. See the [boundary coverage table](docs/testing.md#default-focused-boundary-checks). For full graph exploration with just two generated inputs, see the [small-scope command](docs/testing.md#full-trailhead-graph-with-just-two-property-inputs).
 
 ## Chrome connections
 
@@ -217,31 +242,39 @@ Start your application separately. The model's `entry path` is relative to the s
 
 ## How a run works
 
-1. Validate the business vocabulary and have the actual GraphWalker CLI generate a seeded path.
-2. For each edge, send its intent to the Jev navigator. Jev picks operations and targets from the **current observed action space**. Its browser executor checks freshness and occlusion before input.
-3. At each destination, independently ask Jev which business state is visible, without providing the expected state or navigation goal. Separately judge the global and state requirements. A navigator's `DONE` answer is never a pass.
-4. Credit an edge only after its destination passes verification. Defer global requirements until an applicable checkpoint or the final audit of accumulated scenario evidence. Every global requirement must be verified before a full-run PASS; an observed violation fails immediately.
-5. For each distinct data journey, vary one field against valid examples, then vary combinations, then explicitly cover every declared boundary partition. The independent data dictionary determines whether acceptance or rejection is required.
-6. Before each property attempt, open a new owned tab and discover a shortest setup path through nominal graph journeys. Optional reset hooks can restore backend fixtures before the start page opens. Setup paths and property attempts do not inflate graph coverage.
-7. Let Hypothesis shrink reproducible generated failures; save the counterexample and evidence. Boundary failures are recorded directly.
+1. Validate the model, generate GraphWalker's seeded route and select property phases. Save the plan before browser actions.
+2. Follow the planned graph route. Jev chooses observed controls to carry out each edge's business intent.
+3. Independently identify the destination state and check its rules. Credit an edge only after verification passes. States describe business situations and can share a URL.
+4. After the graph walk, run the selected property phases. The model's data constraints determine whether each input should be accepted or rejected.
+5. Before every input attempt, open a fresh tab and replay a shortest setup route to the form. Optional reset hooks restore backend fixtures. Setup and property attempts do not increase graph coverage.
+6. Submit the exact input once and verify its outcome. Hypothesis can reproduce and shrink failures within the remaining allowance; an observed defect is retained if minimization reaches that limit.
+7. Check requested graph coverage and outstanding global requirements, perform cleanup, and write reports. Stop at the first defect or unverifiable check.
+
+See the [workflow diagram and input-count examples](docs/testing.md). A fresh tab does not clear cookies or backend state; stateful applications need appropriate [reset hooks](docs/hooks.md).
+
+### Browser navigation and verification details
+
+Every global requirement must be verified at an applicable checkpoint or in the final audit. Large audits share repeated rule text and use bounded requests. Validation evidence can be scoped through the model's data sets and accepted/rejected states; other rules use conservative relevance checks, retaining uncertain matches. A contradictory or unresolved applicable result prevents a pass.
 
 The integration adapts Jev's `Browser`, `action_space`, choice validator and policy prompts rather than calling its public `Agent` unchanged. For data journeys, Jev maps business meanings to observed editable fields; Python supplies literal generated values, including blanks and invalid values. Before submission it verifies every value, allowing only whitespace trimming when the business dictionary permits it. It discovers and scrolls to fields outside the viewport. Field ordering is handled by the framework, and Jev identifies the submission control. The runner stops after the first submission so the agent cannot repair rejected input and hide a defect.
 
-Generic accessibility observations distinguish alerts, validation messages and editable fields from ordinary page text. Jev classifies prose requirements internally so comparisons receive literal expected data while outcome checks receive relevant observed evidence. Unclear classification preserves the full comparison context; it never grants a pass. If several navigation controls appear equivalent, a bounded extra request checks their suitability individually. State and rule verdicts retain the configured confidence threshold. If a batched state-rule verdict is uncertain, the verifier isolates that same question once with the same observed evidence and threshold. Both answers are retained in the report. Known failures and provider refusals are not retried, and unresolved checks remain inconclusive. Last-submitted data is only a reference for explicit comparisons; empty or default-valued inputs can still establish that a form is available.
+Generic accessibility observations distinguish alerts, validation messages and editable fields from ordinary page text. Jev classifies prose requirements internally so comparisons receive literal expected data while outcome checks receive relevant observed evidence. Unclear classification preserves the full comparison context; it never grants a pass. Navigation evidence includes rendered links and buttons outside the viewport, so the walker can scroll to them before clicking. If the next operation is uncertain, one focused request can select an observed navigation control, with the same confidence threshold; unresolved answers still stop the run. If several navigation controls appear equivalent, a bounded extra request checks their suitability individually. State and rule verdicts retain the configured confidence threshold. If a batched state-rule verdict is uncertain, the verifier isolates that same question once with the same observed evidence and threshold. Both answers are retained in the report. Known failures and provider refusals are not retried, and unresolved checks remain inconclusive. Last-submitted data is only a reference for explicit comparisons; empty or default-valued inputs can still establish that a form is available.
 
 ## Results and cost controls
 
 | Result | Meaning | Exit code |
 | --- | --- | --- |
-| PASS | All checkpoints and input campaigns selected by the run configuration passed, and required verified coverage was reached. | 0 |
+| PASS | All checkpoints and property phases selected by the run configuration passed, and required verified coverage and business rules were established. | 0 |
 | FAIL | An observed state or requirement contradicts the business model. | 1 |
-| INCONCLUSIVE | Navigation, data entry, provider confidence, setup, budget or infrastructure prevented verification. | 2 |
+| INCONCLUSIVE | Navigation, data entry, provider confidence, setup, a call/action limit or infrastructure prevented verification of selected work. | 2 |
 
 Semantic navigation and judging remain probabilistic, even though graph generation and input constraints are formal. These checks measure modeled coverage and sampled data; they do not prove the website correct. A changing or inconsistent judgment can prevent reliable shrinking and produce `INCONCLUSIVE`.
 
 The default confidence threshold is **0.85**, maximum model calls **1000**, and maximum decision cycles per journey **25**. Operation and speculative target questions share a request; rule checks and field bindings are batched. Exact requests are cached within a run. No provider retries silently exceed the call cap. Reports count calls, cache hits and any provider-reported token usage. A request cap is not a dollar budget; actual cost and full-run call volume need measurement with your key.
 
-`--cases` defaults to **3 generated cases per field plus 3 combined cases**, per distinct data journey. With the default `--input-mode all`, explicit boundaries, graph checkpoints, setup and shrinking add work. Use `--max-calls` to cap spending; hitting it is inconclusive, not a partial pass.
+`--input-mode focused` is the default: Hypothesis generates within separately scheduled constraint partitions, varying one field while others remain valid. `--cases` defaults to **1 per partition** and can be raised without changing implementation. Singleton checks exhaust naturally. Per-field JSON settings and optional custom Hypothesis providers are described in [input strategies](docs/input-strategies.md). For broad per-field and combined generation, select `generated` or `all`. Use `--max-calls` to cap Jev requests; hitting it is inconclusive, not a partial pass.
+
+`--max-input-attempts` determines the selected property scope before execution. A smaller value does not by itself make the result inconclusive. Reports show selected phase completion separately from completion of full campaigns, and retain the available phase and example counts. A provider error, uncertain outcome or failed setup within a selected test still prevents PASS. Global business requirements must still be verified even when the input scope is small.
 
 Every started run saves `artifacts/<timestamp>/report.html`, `report.json` and the exact `model.json`. Reports include verified coverage, observed browser evidence, rule judgments, raw Jev decision requests/responses, action trace and usage. Property failures also save `replay.json`. Unresolved state requirements name the exact rule and retain its answer in the report. The test tab closes when execution ends unless `--headed --keep-browser-open` is supplied; the demo server stops when execution ends. Initial configuration/model errors can exit before a report is created. Viewport screenshots are saved locally after each executed graph check and property attempt. They are never sent to Jev; its decisions use visible text and structured controls. Use `--no-screenshots` to disable image capture. Artifacts are ignored by Git.
 
@@ -251,8 +284,10 @@ Open the `report.html` path printed when the run finishes. It is a local viewer 
 
 - Select a graph state or connection to filter its related tests. Toggle **All connections** for the complete graph; the selected journey is highlighted. Use **+ / −** to zoom and scroll the graph, or **Fit** to restore the overview. Graph colors summarize graph checks, while property outcomes remain separate.
 - Search cases and filter by outcome or graph/property type. Select a case to see its intended behavior, exact inputs, observed checkpoints, rules, actions and Jev decisions.
-- Each graph check captures its final viewport, including a failed or inconclusive stop when the tab remains available. Each executed property attempt captures separately, including reproduction and shrinking attempts. Use the **Input attempt** selector to inspect them; a generation phase defaults to its final recorded attempt.
-- Click an image to open it at full size. Skipped cases and inputs rejected by the attempt budget have no screenshot. Capture failures are shown without changing the test verdict. A screenshot reflects the page after the check and its hooks, rather than an atomic copy of the earlier semantic observation.
+- Each graph check captures its final viewport, including a failed or inconclusive stop when the tab remains available. Each executed property attempt captures separately, including reproduction and shrinking attempts. Use the **Input attempt** selector to inspect them. A failed generation phase defaults to its last failing input, even if later shrinking attempts passed; other phases default to their final attempt. A note identifies when the input allowance limited failure reproduction or shrinking.
+- Click an image to open it at full size. Skipped cases and unselected inputs have no screenshot. Capture failures are shown without changing the test verdict. A screenshot reflects the page after the check and its hooks, rather than an atomic copy of the earlier semantic observation.
+
+Detailed Jev transcripts are stored under `evidence/` and loaded only when you expand a case’s **Actions & Jev decisions**. Keep that folder beside the HTML report when sharing or moving it. Full raw evidence remains in `report.json`; failed/skipped JUnit triage evidence is retained.
 
 PNG images are stored under `screenshots/` and referenced in JSON and JUnit evidence. Capture adds browser/disk work but no Jev requests. `--no-screenshots` disables capture while retaining the graph and results viewer. Existing historical reports do not acquire screenshots retroactively; the new viewer and images are produced by subsequent runs.
 
@@ -269,14 +304,14 @@ Before run hooks or browser actions, Testwalker generates **all selected seeded 
 | Graph starting state | One verification per selected walk. |
 | Graph journey | One test per edge occurrence, including verification of its destination. Repeated visits have distinct test identities. Navigation alone cannot pass a test. |
 | Explicit boundary input | Exact input and expected validity are known before execution. Each is a separate test. |
-| Hypothesis generation phase | One test per field and one combined-input test per campaign. `--cases` records the requested maximum examples; actual attempts, failure reproduction and shrinking are recorded inside that phase. Finite domains can finish with fewer examples. |
+| Hypothesis generation phase | One test per selected field phase or combined-input phase. `--cases` supplies the requested maximum examples; input-scope selection may reduce that maximum. Actual attempts, failure reproduction and shrinking are recorded inside the phase. Finite domains can finish with fewer examples. |
 | Overall run outcome | One additional JUnit test accounts for coverage, global requirements, planning, hooks and cleanup. |
 
-JUnit maps a business defect to `<failure>`, an attempted but inconclusive check to `<error>`, and selected tests never reached to `<skipped>`. A partially executed generation phase that hits a budget is an error; untouched phases or boundary cases are skipped. No fictitious skipped generated examples are added. The overall run outcome also fails or errors when the run cannot pass, so an aborted run cannot look successful merely because its remaining tests were skipped. A defect can therefore appear on both its individual test and the overall result.
+JUnit maps a business defect to `<failure>`, an attempted but inconclusive check to `<error>`, and selected tests never reached to `<skipped>`. A partially executed generation phase whose outcome cannot be verified is an error; later selected phases or boundary cases are skipped. Work excluded by `--max-input-attempts` is outside the inventory, rather than skipped. No fictitious skipped generated examples are added. The overall run outcome also fails or errors when the run cannot pass, so an aborted run cannot look successful merely because its remaining selected tests were skipped. A defect can therefore appear on both its individual test and the overall result.
 
 Failure/error entries contain the business intent, source/destination or property constraints, exact attempted inputs, observed checkpoints, rule verdicts, relevant browser actions and Jev requests/responses, hook errors, stop context and artifact references. Skips identify their planned test, the stop reason and the upstream failing test where applicable. The saved seed, effective generator, model hash and run limits support reproduction. `--debug` includes the stopping traceback. XML safely escapes browser text and generated values.
 
-Only selected scope is counted. Graph edges omitted by the chosen route appear in `planning.unselected_edges`; property modes disabled by `--input-mode none` are not reported as skipped failures. Replay runs contain the requested input test and overall outcome, without pretending to explore the graph. Configuration/model errors before a run is created still use the CLI error and exit code rather than producing a test inventory.
+Only selected scope is counted. Graph edges omitted by the chosen route appear in `planning.unselected_edges`; input phases excluded by the attempt limit appear in `planning.unselected_properties`. The report's `scope.property_selection` records selected and available phase/example counts, and JUnit suite properties include these counts. A shortened generation phase retains its original `requested_max_examples` alongside its selected `max_examples`. Property modes disabled by `--input-mode none` are not reported as skipped failures. Replay runs contain the requested input test and overall outcome, without pretending to explore the graph. Configuration/model errors before a run is created still use the CLI error and exit code rather than producing a test inventory.
 
 ## Debugging an early exit
 
@@ -299,7 +334,7 @@ testwalker demo --site trailhead --demo-hooks --headed --keep-browser-open --deb
 
 From a source checkout, prefix each command with `uv run`. Open the `Report:` path printed at exit. **Where execution stopped** identifies the phase, walk and model element; **Journey checkpoints** contains expected states, observed text and individual rule answers. **Full execution evidence** includes action traces, decision requests/responses and hook events. `--debug` adds the exception traceback to the console and report. It also prints configuration/import tracebacks for errors before a report can be created.
 
-For low-confidence state identification, compare the expected description with the actual page and the last Jev answers. For unresolved requirements, determine whether the page really exposes the evidence; backend-only facts may need a lifecycle hook. For navigation failure, inspect the chosen controls and action trace. Increase `--max-calls` or `--max-actions` only when the corresponding limit is the stated reason for stopping. A two-attempt property cap intentionally stops unfinished campaigns as INCONCLUSIVE; it does not explain stopping after only a few graph edges.
+For low-confidence state identification, compare the expected description with the actual page and the last Jev answers. For unresolved requirements, determine whether the page really exposes the evidence; backend-only facts may need a lifecycle hook. For navigation failure, inspect the chosen controls and action trace. Increase `--max-calls` or `--max-actions` only when the corresponding limit is the stated reason for stopping. A two-attempt property limit selects a small input scope; it does not by itself produce INCONCLUSIVE or explain stopping after only a few graph edges.
 
 The retained demo tab can be inspected, but its temporary server has stopped. For interactive reloads, run `testwalker serve --port 4173` in a separate terminal and test it using `testwalker run --model models/trailhead.json --url http://127.0.0.1:4173 --hooks examples/trailhead/hooks.py`, adding your exploration/debug options. Use the saved `model.json` from a report to reproduce its exact specification, and use the same `--seed` and generator for its route. Jev decisions can still vary between runs. Lowering the confidence threshold changes the acceptance standard; it is not a fix for an ambiguous model.
 

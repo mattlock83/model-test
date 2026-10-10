@@ -57,11 +57,47 @@ class TestPlan:
             # An edge and the following state belong to the same verified journey.
             self.graph[walk, position] = test
 
-    def add_campaigns(self, model, campaigns, *, mode, cases):
+    def add_campaigns(self, model, campaigns, *, mode, cases, max_attempts, input_strategies=None):
+        """Select input scope before execution, in stable model/phase order."""
+        selected = {}
+        remaining = max_attempts
+        selection = {
+            "policy": "model order",
+            "input_limit": max_attempts,
+            "available_phases": 0,
+            "selected_phases": 0,
+            "excluded_phases": 0,
+            "available_examples": 0,
+            "selected_examples": 0,
+        }
+        self.report["scope"]["property_selection"] = selection
+        omitted = self.report["planning"]["unselected_properties"] = []
         for edge in campaigns:
             spec = edge["properties"]["business"]
             fields = model.data_sets[spec["data set"]]
-            for phase in plan_cases(fields, mode=mode, cases=cases):
+            for phase in plan_cases(
+                fields, mode=mode, cases=cases, policy=input_strategies, data_set=spec["data set"]
+            ):
+                requested = phase.get("max_examples", 1)
+                selection["available_phases"] += 1
+                selection["available_examples"] += requested
+                if not remaining:
+                    selection["excluded_phases"] += 1
+                    omitted.append(
+                        {
+                            "journey": edge["id"],
+                            "phase": phase,
+                            "reason": "Outside the configured property input scope",
+                        }
+                    )
+                    continue
+                allowance = min(requested, remaining)
+                remaining -= allowance
+                if phase["kind"] == "generated":
+                    phase = {**phase, "requested_max_examples": requested, "max_examples": allowance}
+                selection["selected_phases"] += 1
+                selection["selected_examples"] += allowance
+                selected.setdefault(edge["id"], []).append(phase)
                 test = self.add(
                     f"property/{edge['id']}/{phase['id']}",
                     "property",
@@ -80,6 +116,8 @@ class TestPlan:
                     global_rules=model.business["rules"],
                 )
                 self.properties[edge["id"], phase["id"]] = test
+        self.report["scope"]["selected_campaigns"] = len(selected)
+        return selected
 
     def save(self, directory):
         # Called before any test starts: this file remains an immutable inventory.
@@ -87,6 +125,7 @@ class TestPlan:
             "model_hash": self.report["model_hash"],
             "exploration": self.report["exploration"],
             "limits": self.report["limits"],
+            "scope": self.report["scope"],
             "planning": self.report["planning"],
             "walks": self.report.get("walks", []),
             "tests": self.tests,
@@ -121,9 +160,12 @@ class TestPlan:
             attempts = [self.report["cases"][index] for index in test["attempt_indices"]]
             executed = [entry for entry in attempts if entry.get("attempted", True)]
             if executed:
+                evidence = next(
+                    (entry for entry in reversed(executed) if entry["status"] == status), executed[-1]
+                )
                 for key in ("screenshot", "screenshot_at", "screenshot_error"):
-                    if key in executed[-1]:
-                        test[key] = executed[-1][key]
+                    if key in evidence:
+                        test[key] = evidence[key]
         test["trace_range"].append(len(self.browser.trace))
         test["decision_range"].append(len(getattr(self.client, "decisions", [])))
         self.active = None

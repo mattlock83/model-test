@@ -48,6 +48,11 @@ SEMANTICS = r"""(() => {
         current_value: e.value,
         ...fieldPosition(e)
       })),
+    available_links: [...document.querySelectorAll('a[href],[role="link"]')]
+      .filter(e => rendered(e) && e.getAttribute('aria-disabled') !== 'true')
+      .slice(0, 100).map(e => ({
+        label: e.getAttribute('aria-label') || e.innerText, ...fieldPosition(e)
+      })),
     available_buttons: [...document.querySelectorAll('button,[role="button"]')]
       .filter(e => rendered(e) && !e.disabled && e.getAttribute('aria-disabled') !== 'true')
       .slice(0, 50).map(e => ({
@@ -165,12 +170,48 @@ def question(criteria, instructions):
     return {"type": "choice", "criteria": criteria, "instructions": instructions}
 
 
+def audit_context_batches(context, max_chars=16000):
+    """Keep every distinct observation while bounding individual provider inputs."""
+    definitions = context.get("verified_requirement_definitions")
+
+    def payload(items):
+        result = {"executed_scenarios": items}
+        if definitions is not None:
+            references = {reference for item in items for reference in item["verified_requirement_ids"]}
+            result["verified_requirement_definitions"] = {
+                k: v for k, v in definitions.items() if k in references
+            }
+        return result
+
+    batch = []
+    for scenario in context["executed_scenarios"]:
+        candidate = [*batch, scenario]
+        if len(json.dumps(payload(candidate))) > max_chars:
+            if not batch:
+                raise Inconclusive("A deferred-requirement observation exceeds the provider evidence budget")
+            yield payload(batch)
+            batch = [scenario]
+            if len(json.dumps(payload(batch))) > max_chars:
+                raise Inconclusive("A deferred-requirement observation exceeds the provider evidence budget")
+        else:
+            batch = candidate
+    if batch or not context["executed_scenarios"]:
+        yield payload(batch)
+
+
 def state_question(descriptions):
     """Use the same independent state vocabulary for navigation and verification."""
     criteria = {f"s{i}": description for i, description in enumerate(descriptions)}
     criteria["UNKNOWN"] = "None matches, multiple states fit, or visible evidence is insufficient"
     return question(
-        criteria, "Identify the current business state using only observed evidence. " + UNTRUSTED
+        criteria,
+        "Identify the current business state using only observed evidence. Match the page's "
+        "distinctive title or heading and its current workflow stage against all descriptions. "
+        "Controls describe actions the visitor can take next, not outcomes already reached. "
+        "Required-field labels, input constraints and ordinary guidance are not validation errors; "
+        "a rejection state needs observed error feedback, not merely an empty required input. "
+        "Distinguish an editable entry form from its review, confirmation and rejection stages. "
+        "If multiple descriptions still fit or defining evidence is missing, choose UNKNOWN. " + UNTRUSTED,
     )
 
 
@@ -305,7 +346,19 @@ class JevBrowser:
         )
         if destination_pending:
             del operations["DONE"]
-        questions = {"operation": question(operations, {"goal": goal, "rules": [NEXT_ACTION, UNTRUSTED]})}
+        navigation_guidance = (
+            "For navigation, use a control offering the requested journey instead of editing or "
+            "submitting unrelated form values. Accessibility available_links and available_buttons "
+            "include rendered controls outside the viewport. If the appropriate control is offscreen "
+            "and is not in the offered element targets, SCROLL in its scroll_direction to expose it "
+            "before clicking. Page text mentioning a control does not mean it is currently clickable. "
+            "Do not invent replacement form values merely to leave a validation-error page."
+        )
+        questions = {
+            "operation": question(
+                operations, {"goal": goal, "rules": [NEXT_ACTION, navigation_guidance, UNTRUSTED]}
+            )
+        }
         if destination:
             destinations = {
                 "reached": destination,
@@ -341,7 +394,12 @@ class JevBrowser:
                 return "DONE", None, False
             if reached == "uncertain":
                 raise Inconclusive("Jev could not establish whether the navigation destination was reached")
-        operation = self.client.answer(result, "operation", operations)
+        try:
+            operation = self.client.answer(result, "operation", operations)
+        except UncertainDecision:
+            if fields:
+                raise
+            return self._navigation_control(page, goal, targets.get("CLICK", {}), controls)
         if operation in {"DONE", "BLOCKED"}:
             return operation, None, False
         if operation in targets:
@@ -357,6 +415,51 @@ class JevBrowser:
                 submission = submit_index == index
             return operation, targets[operation][index], submission
         return operation, controls[operation], False
+
+    def _navigation_control(self, page, goal, visible, controls):
+        """Resolve operation ambiguity by selecting an observed navigation control.
+
+        Offscreen controls are candidates for scrolling, never executable refs.
+        This is one focused decision, with the ordinary confidence gate.
+        """
+        candidates = dict(visible)
+        offscreen = {}
+        semantics = page.get("semantics", {})
+        for control in [*semantics.get("available_links", []), *semantics.get("available_buttons", [])]:
+            if control.get("scroll_direction") not in {"up", "down"}:
+                continue
+            index = f"offscreen_{len(offscreen)}"
+            offscreen[index] = control
+            candidates[index] = control
+        criteria = {
+            index: action["label"]
+            + (" (scroll " + action["scroll_direction"] + " to reach it)" if index in offscreen else "")
+            for index, action in candidates.items()
+        }
+        criteria["UNAVAILABLE"] = "No observed navigation control can advance the requested journey."
+        result = self.client.ask(
+            evidence(page),
+            {
+                "navigation_control": question(
+                    criteria,
+                    "Journey: " + goal + "\nChoose the observed control that advances this navigation "
+                    "journey. A suitable offscreen control is reachable by scrolling. Do not choose an "
+                    "editable field or submit unrelated values when a navigation control offers the "
+                    "requested operation. Judge control meaning, not its position or arbitrary index. "
+                    "Choose UNAVAILABLE if the observed controls cannot establish a way forward. "
+                    + UNTRUSTED,
+                )
+            },
+        )
+        selected = self.client.answer(result, "navigation_control", criteria)
+        if selected == "UNAVAILABLE":
+            raise Inconclusive("No observed control can establish the navigation journey")
+        if selected in offscreen:
+            operation = "SCROLL_" + offscreen[selected]["scroll_direction"].upper()
+            if operation not in controls:
+                raise Inconclusive("The navigation control is outside the supported scroll area")
+            return operation, controls[operation], False
+        return "CLICK", visible[selected], False
 
     def _equivalent_target(self, page, goal, operation, candidates, ranking):
         """Allow multiple useful controls instead of requiring a uniquely best one."""
@@ -660,6 +763,122 @@ class Oracle:
                     # If unclear, preserve all data and require the ordinary strict verdict.
                     self.rule_kinds[rule] = "uncertain"
 
+    def _validation_scopes(self, rules):
+        """Map input-validation rules to declared dictionaries, never infer a verdict."""
+        datasets = list(self.model.data_sets)
+        if not datasets:
+            return [None for _ in rules]
+        criteria = {
+            "OTHER": "A different type of requirement, multiple dictionaries, or an unclear input scope.",
+            **{
+                f"data_{i}": f"Acceptance/rejection and validation guidance for submitted {name} inputs."
+                for i, name in enumerate(datasets)
+            },
+        }
+        response = self.client.ask(
+            {
+                "input_dictionaries": self.model.data_sets,
+                "requirements": {f"input_scope_{i}": rule for i, rule in enumerate(rules)},
+            },
+            {
+                f"input_scope_{i}": question(
+                    criteria,
+                    f"Classify the evidence scope of requirement input_scope_{i}. Choose a dictionary "
+                    "only if this is an acceptance/rejection rule about its submitted inputs and "
+                    "validation guidance. Use the actual declared field meanings and constraints. "
+                    "For pricing, side effects, navigation, cross-stage comparisons, broader business "
+                    "constraints outside the dictionary, or ambiguity, choose OTHER. This only selects "
+                    "evidence; it cannot establish whether the requirement passed.",
+                )
+                for i in range(len(rules))
+            },
+        )
+        scopes = []
+        for i in range(len(rules)):
+            try:
+                selected = self.client.answer(response, f"input_scope_{i}", criteria)
+                scopes.append(None if selected == "OTHER" else datasets[int(selected.removeprefix("data_"))])
+            except Inconclusive:
+                scopes.append(None)
+        return scopes
+
+    def _audit_states(self, scenarios, rules):
+        """Select evidence scope, never a pass/fail verdict; ambiguity keeps evidence."""
+        groups = {}
+        for scenario in scenarios:
+            state = scenario["observed_state"]
+            group = groups.setdefault(
+                state,
+                {
+                    "description": self.model.states.get(state, {})
+                    .get("properties", {})
+                    .get("business", {})
+                    .get("description", state),
+                    "input_violation_fields": set(),
+                    "has_validation_alerts": False,
+                },
+            )
+            group["input_violation_fields"].update(v["field"] for v in scenario["input_violations"])
+            group["has_validation_alerts"] |= bool(scenario["validation_alerts"])
+        groups = {
+            s: {**v, "input_violation_fields": sorted(v["input_violation_fields"])} for s, v in groups.items()
+        }
+        selected = [set(groups) for _ in rules]
+        scopes = self._validation_scopes(rules)
+        for i, dataset in enumerate(scopes):
+            if dataset is None:
+                continue
+            outcomes = set()
+            for edge in self.model.edges.values():
+                business = edge["properties"]["business"]
+                if business.get("data set") == dataset:
+                    outcomes.update(
+                        (business.get("accepted at", edge["targetVertexId"]), business["rejected at"])
+                    )
+            selected[i] &= outcomes
+        questions = []
+        for i in range(len(rules)):
+            if scopes[i] is not None:
+                continue
+            for state in groups:
+                name = f"relevance_{len(questions)}"
+                questions.append((name, i, state))
+        criteria = {
+            "relevant": "Observations at this state can support or contradict the requirement.",
+            "unrelated": "This state contains no applicable scenario for this requirement.",
+            "uncertain": "The requirement's relationship to this state is unclear.",
+        }
+        for start in range(0, len(questions), 20):
+            batch = questions[start : start + 20]
+            response = self.client.ask(
+                {
+                    "requirements": {f"global_{i}": rules[i] for _, i, _ in batch},
+                    "observed_states": {state: groups[state] for _, _, state in batch},
+                },
+                {
+                    name: question(
+                        criteria,
+                        f"Evidence selection only: requirement global_{i}; observed state {state}. "
+                        "Select relevant if any observation at this state can evidence or contradict "
+                        "the requirement. Select unrelated only when the requirement concerns an absent "
+                        "stage or scenario. Match the particular business operation and affected fields, "
+                        "not merely a broad topic or repeated words like details. "
+                        "Field constraints and available form fields alone do not "
+                        "constitute a submitted validation outcome. Keep evidence when unsure. "
+                        "State descriptions identify already observed checkpoints; they do not prove "
+                        "that a requirement passed. Do not make a pass/fail judgment. " + UNTRUSTED,
+                    )
+                    for name, i, state in batch
+                },
+            )
+            for name, i, state in batch:
+                try:
+                    if self.client.answer(response, name, criteria) == "unrelated":
+                        selected[i].remove(state)
+                except Inconclusive:
+                    pass
+        return selected
+
     def audit_globals(self, records, rules):
         """Verify deferred requirements against accumulated observed scenarios."""
         scenarios, seen = [], set()
@@ -684,7 +903,19 @@ class Oracle:
             if identity not in seen:
                 seen.add(identity)
                 scenarios.append(scenario)
-        if len(json.dumps(scenarios)) > 160000:
+        context = {"executed_scenarios": scenarios}
+        if len(json.dumps(context)) > 150000:
+            # Long walks repeat verified rule text at many checkpoints. Share
+            # those exact strings without dropping observations or input values.
+            requirements = {}
+            for scenario in scenarios:
+                references = []
+                for rule in scenario.pop("verified_requirements"):
+                    reference = requirements.setdefault(rule, f"r{len(requirements)}")
+                    references.append(reference)
+                scenario["verified_requirement_ids"] = references
+            context["verified_requirement_definitions"] = {v: k for k, v in requirements.items()}
+        if len(json.dumps(context)) > 160000:
             raise Inconclusive("The deferred-requirement audit exceeds this demo's evidence budget")
         questions = {
             f"global_{i}": question(
@@ -694,31 +925,90 @@ class Oracle:
                     ),
                     "broken": "Observed behavior in an executed scenario contradicts this requirement.",
                     "uncertain": (
-                        "No applicable scenario was verified, or the observed evidence is insufficient."
+                        "An applicable scenario is present, but its observed evidence is insufficient."
                     ),
+                    "not_applicable": "This batch contains no scenario to which this requirement applies.",
                 },
-                f"Requirement: {rule}\nJudge the executed scenarios, not every possible future input. "
-                "Inspect observed states, messages and verified requirements. Do not infer compliance "
-                "from a generic PASS label. At least one applicable scenario must be evidenced. " + UNTRUSTED,
+                f"Requirement: {rule}\nJudge this batch of executed scenarios, "
+                "not every possible future input. "
+                "Inspect observed states, messages and verified requirements. If verified_requirement_ids "
+                "are present, resolve them through verified_requirement_definitions; these reference "
+                "the exact statements verified at that checkpoint. Do not infer compliance "
+                "from a generic PASS label. At least one applicable scenario must be evidenced. "
+                "If this batch contains no applicable scenario, choose not_applicable rather than "
+                "uncertain. Choose uncertain when a relevant scenario is present but cannot be verified. "
+                + UNTRUSTED,
             )
             for i, rule in enumerate(rules)
         }
-        response = self.client.ask({"executed_scenarios": scenarios}, questions)
+        selected = (
+            self._audit_states(scenarios, rules)
+            if len(json.dumps(context)) > 16000
+            else [{s["observed_state"] for s in scenarios} for _ in rules]
+        )
+        answers = [[] for _ in rules]
+        if len(json.dumps(context)) <= 16000 and scenarios:
+            # Small audits keep the single request used by earlier releases.
+            response = self.client.ask(context, questions)
+            batches = [(i, 0, response) for i in range(len(rules))]
+            for i, batch, response in batches:
+                answers[i].append(self._audit_answer(response, questions, i, batch))
+        else:
+            for i, states in enumerate(selected):
+                scoped = {
+                    **context,
+                    "executed_scenarios": [s for s in scenarios if s["observed_state"] in states],
+                }
+                if not scoped["executed_scenarios"]:
+                    continue
+                name = f"global_{i}"
+                for batch, payload in enumerate(audit_context_batches(scoped)):
+                    response = self.client.ask(payload, {name: questions[name]})
+                    check = self._audit_answer(response, questions, i, batch)
+                    answers[i].append(check)
+                    if check["status"] == "broken":
+                        break
         results = []
-        for i, rule in enumerate(rules):
-            try:
-                verdict = self.client.answer(response, f"global_{i}", questions[f"global_{i}"]["criteria"])
-            except Inconclusive:
-                verdict = "uncertain"
+        for rule, checks in zip(rules, answers, strict=True):
+            statuses = {check["status"] for check in checks}
+            # A later contradiction overrides earlier support. Absence is never
+            # support; uncertainty in an applicable batch remains unresolved.
+            verdict = (
+                "broken"
+                if "broken" in statuses
+                else "uncertain"
+                if "uncertain" in statuses or "met" not in statuses
+                else "met"
+            )
+            representative = next(
+                (c for c in checks if c["status"] == verdict),
+                checks[-1] if checks else {"answer": None},
+            )
             results.append(
                 {
                     "rule": rule,
                     "scope": "global",
                     "status": verdict,
-                    "answer": response.get("answers", {}).get(f"global_{i}"),
+                    "answer": representative["answer"],
+                    "batch_answers": checks,
+                    "evidence_states": sorted(selected[len(results)]),
                 }
             )
         return results
+
+    def _audit_answer(self, response, questions, i, batch):
+        name = f"global_{i}"
+        reason = None
+        try:
+            verdict = self.client.answer(response, name, questions[name]["criteria"])
+        except Inconclusive as error:
+            verdict, reason = "uncertain", str(error)
+        return {
+            "batch": batch,
+            "status": verdict,
+            "answer": response.get("answers", {}).get(name),
+            "reason": reason,
+        }
 
     def check(self, page, expected, data=None, invalid=None):
         identification = state_question(

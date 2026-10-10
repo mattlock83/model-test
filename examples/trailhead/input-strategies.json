@@ -1,0 +1,12 @@
+{
+  "defaults": {
+    "strategy": "nearby",
+    "radius": 1
+  },
+  "data sets": {
+    "Adventure party": {
+      "Party size": { "cases": 3, "radius": 5 },
+      "Traveller name": { "cases": 3, "alphabet": "abcdefghijklmnopqrstuvwxyz" }
+    }
+  }
+}
