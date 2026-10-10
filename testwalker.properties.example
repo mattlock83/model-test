@@ -1,6 +1,7 @@
-# Required for plan, run and demo. Use a file path, not a command with arguments.
-# Relative paths are resolved from this properties file's directory.
-GRAPHWALKER_BIN=/absolute/path/to/graphwalker
+# The package bundles a Rust worker containing GraphWalker and Hegel.
+# Optional override; use an executable path, not a shell command.
+# Relative paths resolve from this properties file's directory.
+# TESTWALKER_CORE_BIN=./target/release/testwalker-core
 
 # Required for run and demo. Plan does not need an API key.
 TYPESAFE_API_KEY=your_jev_key

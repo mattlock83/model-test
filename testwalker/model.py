@@ -113,7 +113,8 @@ def validate_model(document):
     for key in ("id", "name", "startElementId"):
         text(graph.get(key))
     require(not graph.get("actions"), "native action scripts are outside the business model vocabulary")
-    shape(graph.get("properties"), {"business"}, {"business"})
+    shape(graph.get("properties"), {"business", "rpc"}, {"business"})
+    rpc_profile = "rpc" in graph["properties"]
     business = graph["properties"]["business"]
     shape(
         business,
@@ -227,7 +228,11 @@ def validate_model(document):
             )
             names.add(element["name"])
             destination[element["id"]] = element
-            shape(element.get("properties"), {"business"}, {"business"})
+            shape(element.get("properties"), {"business", "rpc"}, {"business"})
+            require(
+                "rpc" not in element["properties"] or rpc_profile,
+                "element RPC bindings require a graph RPC profile",
+            )
             spec = element["properties"]["business"]
             if destination is states:
                 shape(spec, {"description", "rules"}, {"description", "rules"})
@@ -275,7 +280,12 @@ def validate_model(document):
     graph.setdefault("generator", "quick_random(edge_coverage(100))")
     text(graph["generator"])
     digest = hashlib.sha256(json.dumps(document, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
-    return BusinessModel(document, graph, business, states, edges, digest)
+    model = BusinessModel(document, graph, business, states, edges, digest)
+    if rpc_profile:
+        from .rpc_contract import validate_rpc_model
+
+        validate_rpc_model(model)
+    return model
 
 
 def setup_path(graph, edges, target):

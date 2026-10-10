@@ -8,8 +8,6 @@ import sys
 from copy import deepcopy
 from pathlib import Path
 
-from hypothesis.strategies import SearchStrategy
-
 
 def validate_policy(policy, data_sets):
     policy = deepcopy({} if policy is None else policy)
@@ -62,7 +60,7 @@ def load_policy(path, data_sets):
 
 
 class StrategyProvider:
-    """Explicitly opted-in, trusted Python extension returning Hypothesis strategies."""
+    """Explicitly opted-in, trusted Python extension returning declarative Hegel domains."""
 
     def __init__(self, factory=None, metadata=None):
         self.factory = factory
@@ -90,7 +88,8 @@ class StrategyProvider:
         return cls(factory, {"path": str(path), "sha256": digest})
 
     def build(self, context, default):
-        domain = self.factory(deepcopy(context), default) if self.factory else default
-        if not isinstance(domain, SearchStrategy):
-            raise TypeError("input_strategy must return a Hypothesis SearchStrategy")
+        domain = self.factory(deepcopy(context), deepcopy(default)) if self.factory else default
+        if not isinstance(domain, dict):
+            raise TypeError("input_strategy must return a Hegel strategy description")
+        json.dumps(domain, allow_nan=False)
         return domain

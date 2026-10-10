@@ -23,7 +23,7 @@ The Python CLI starts or reuses isolated Chrome and serves the bundled example. 
 3. Reject a short cancellation reason, correct it, preview the full refund, and finally cancel.
 4. Reject an invalid member email, correct it, save the profile, and return home.
 
-This is a deliberately scoped smoke test: the zero coverage targets permit that short path, and `--input-mode none` disables the separate Hypothesis campaigns. Nominal valid and invalid data journeys still execute. A PASS covers the selected route and its applicable requirements; it does not claim 148-edge coverage. Every global rule must still be established. Jev uncertainty or an exhausted call/action allowance remains INCONCLUSIVE. The full walk also exercises controls below the viewport; the walker observes their meaning and scrolls to them without adding selectors to the graph.
+This is a deliberately scoped smoke test: the zero coverage targets permit that short path, and `--input-mode none` disables the separate Hegel campaigns. Nominal valid and invalid data journeys still execute. A PASS covers the selected route and its applicable requirements; it does not claim 148-edge coverage. Every global rule must still be established. Jev uncertainty or an exhausted call/action allowance remains INCONCLUSIVE. The full walk also exercises controls below the viewport; the walker observes their meaning and scrolls to them without adding selectors to the graph.
 
 ## Explore the complete graph and input space
 
@@ -59,7 +59,7 @@ testwalker demo --site trailhead --demo-hooks --headed \
   --max-calls 10000
 ```
 
-The default focused mode selects 186 Hypothesis phases across seven campaigns, with one generated example per partition. Reproduction and shrinking can add attempts. Increase `--cases` or use `--input-strategies examples/trailhead/input-strategies.json` for per-field tuning. The same constraints are tested separately from different form states; identical reference inputs within a campaign are deduplicated. See [input strategies](../../docs/input-strategies.md).
+The default focused mode selects 186 Hegel phases across seven campaigns, with one generated example per partition. Reproduction and shrinking can add attempts. Increase `--cases` or use `--input-strategies examples/trailhead/input-strategies.json` for per-field tuning. The same constraints are tested separately from different form states; identical reference inputs within a campaign are deduplicated. See [input strategies](../../docs/input-strategies.md).
 
 The broader command selects all seven campaigns, with 186 explicit boundary cases and up to 640 generated inputs. `--cases 20` applies to each field phase and each combined phase. The 2,000-attempt limit selects all 826 planned inputs and leaves room for reproduction and shrinking; finite domains may use fewer. The Jev allowance is separate, and the runner stops at the first defect or unverifiable outcome.
 
@@ -121,7 +121,7 @@ The graph contains two business intents only: choose Marina pier, or choose City
 
 Selectors and shadow-DOM knowledge exist only in this optional hooks file. If the widget implementation changes, this integration may need maintenance; the business model does not. Without `--hooks`, the generic navigator may be unable to finish a pickup journey and should return INCONCLUSIVE.
 
-Pickup is a pair of fixed navigation scenarios, not a generated form field. Hypothesis explores the three declared business data sets. The adventure and updates fields intentionally accept typed choices so invalid unlisted values can be submitted and rejected; a closed native or custom picker cannot necessarily represent such values. Do not substitute a permitted option for an impossible generated value or inject a hidden value just to force a pass.
+Pickup is a pair of fixed navigation scenarios, not a generated form field. Hegel explores the three declared business data sets. The adventure and updates fields intentionally accept typed choices so invalid unlisted values can be submitted and rejected; a closed native or custom picker cannot necessarily represent such values. Do not substitute a permitted option for an impossible generated value or inject a hidden value just to force a pass.
 
 ## Demonstrate defects caught by hooks
 
@@ -160,6 +160,18 @@ testwalker run --model models/trailhead.json --url http://127.0.0.1:4184 \
 The demo's local `/api/trailhead/` endpoints are fixtures for this synthetic application. They are not a proposed reset API for arbitrary sites. Hooks for another application should call that application's own test APIs with bounded timeouts. Each server instance has its own in-memory ledger; run one test job per server so resets do not interfere. The framework host binds to localhost.
 
 ## Validation evidence
+
+After the Rust-core migration, a full live run with `new_york_street_sweeper`, 100% edge/state targets, and the default focused Hegel mode passed **539 planned checks**: all **148 journeys, 20 states, seven property campaigns, 186 input attempts and five global requirements**. It used **946 Jev calls** at the unchanged **0.85** confidence threshold, with no failed, inconclusive or skipped checks. JUnit recorded zero failures/errors/skips, and the browser closed automatically. The hooks recorded 320 successful backend checkpoints and 47 custom pickup selections. This is one measured run; provider judgments may vary.
+
+```bash
+uv run testwalker demo --site trailhead --demo-hooks \
+  --generator new_york_street_sweeper \
+  --edge-coverage 100 --state-coverage 100 --max-steps 1000 \
+  --input-mode focused --cases 1 --max-input-attempts 1000 \
+  --max-calls 4000
+```
+
+The demo links validation errors to their input fields and distinguishes missing, short and long values in its feedback. Outcome assertions exclude irrelevant editable values; explicit comparisons retain them. Global audits split large campaigns into bounded batches, and native decision transcripts use pagination so report finalization does not exceed the JSON-RPC message limit.
 
 The healthy predefined live run passed all **14 selected journeys, 14 states and five global requirements**, with both backend scenarios and the Marina picker verified, using **62 Jev calls** at the unchanged 0.85 threshold. Separate targeted live runs caught the missing inventory update (18 calls) and duplicate refund (30 calls) as FAIL through the hooks, despite successful UI acknowledgements.
 

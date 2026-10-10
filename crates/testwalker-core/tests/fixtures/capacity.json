@@ -1,0 +1,127 @@
+{
+  "models": [
+    {
+      "id": "capacity",
+      "name": "Capacity reservation",
+      "startElementId": "form",
+      "properties": {
+        "business": {
+          "version": 3,
+          "purpose": "Reserve capacity",
+          "rules": [
+            "Invalid capacity is rejected."
+          ],
+          "data sets": {
+            "Reservation": {
+              "Places": {
+                "description": "How many people attend",
+                "type": "whole number",
+                "required": true,
+                "minimum": 1,
+                "maximum": 4,
+                "example": 2
+              }
+            }
+          },
+          "coverage": {
+            "edges": 100,
+            "states": 100
+          }
+        }
+      },
+      "vertices": [
+        {
+          "id": "form",
+          "name": "form",
+          "properties": {
+            "business": {
+              "description": "Enter reservation details",
+              "rules": [
+                "The outcome is visible."
+              ]
+            }
+          }
+        },
+        {
+          "id": "accepted",
+          "name": "accepted",
+          "properties": {
+            "business": {
+              "description": "Reservation accepted",
+              "rules": [
+                "The outcome is visible."
+              ]
+            }
+          }
+        },
+        {
+          "id": "rejected",
+          "name": "rejected",
+          "properties": {
+            "business": {
+              "description": "Reservation rejected with an explanation",
+              "rules": [
+                "The outcome is visible."
+              ]
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "submit",
+          "name": "submit",
+          "sourceVertexId": "form",
+          "targetVertexId": "accepted",
+          "properties": {
+            "business": {
+              "intent": "submit",
+              "data set": "Reservation",
+              "rejected at": "rejected"
+            }
+          }
+        },
+        {
+          "id": "submit_invalid",
+          "name": "submit_invalid",
+          "sourceVertexId": "form",
+          "targetVertexId": "rejected",
+          "properties": {
+            "business": {
+              "intent": "submit_invalid",
+              "data set": "Reservation",
+              "accepted at": "accepted",
+              "rejected at": "rejected",
+              "example": {
+                "Places": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "another",
+          "name": "another",
+          "sourceVertexId": "accepted",
+          "targetVertexId": "form",
+          "properties": {
+            "business": {
+              "intent": "another"
+            }
+          }
+        },
+        {
+          "id": "correct",
+          "name": "correct",
+          "sourceVertexId": "rejected",
+          "targetVertexId": "form",
+          "properties": {
+            "business": {
+              "intent": "correct"
+            }
+          }
+        }
+      ],
+      "generator": "quick_random(edge_coverage(100))"
+    }
+  ]
+}

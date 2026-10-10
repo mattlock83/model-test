@@ -12,7 +12,8 @@ artifacts/
 __pycache__/
 .pytest_cache/
 .ruff_cache/
-.hypothesis/
 *.egg-info/
 
 build/
+target/
+testwalker/bin/

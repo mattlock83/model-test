@@ -39,16 +39,8 @@ def test_live_demo_requires_property_key_and_has_no_offline_fallback(tmp_path, m
 
 
 def test_native_plan_uses_property_executable_without_browser_or_key(tmp_path, monkeypatch):
-    seen = []
-
-    def generate(model, path, seed, steps, *, binary):
-        seen.append(binary)
-        return [{**model.states[model.graph["startElementId"]], "kind": "state"}]
-
-    monkeypatch.setattr(cli, "generate_path", generate)
     monkeypatch.setattr(cli, "connect", lambda *_args, **_kwargs: pytest.fail("Plan must not launch Chrome"))
     assert cli.main(["plan", "--config", config_file(tmp_path, key="")]) == 0
-    assert str(seen[0]) == str(cli.RuntimeConfig.load(tmp_path / "runtime.properties").graphwalker)
 
 
 @pytest.mark.parametrize("status, exit_code", [("PASS", 0), ("FAIL", 1), ("INCONCLUSIVE", 2)])
@@ -73,7 +65,7 @@ def test_installed_demo_loads_only_explicit_bundled_hooks_and_preserves_status(
 
     def run(model, url, **kwargs):
         captured.update(model=model, url=url, **kwargs)
-        assert kwargs["client"].api_key == "unit-test-key"
+        assert kwargs["core"].request("core.info")["protocol_version"] == "1"
         assert kwargs["browser"].text_config == {}
         return {"status": status}
 
@@ -102,10 +94,6 @@ def test_installed_demo_loads_only_explicit_bundled_hooks_and_preserves_status(
         == exit_code
     )
     assert captured["hooks"].path == str(asset("examples/trailhead/hooks.py").resolve())
-    assert (
-        captured["path_generator"].keywords["binary"]
-        == cli.RuntimeConfig.load(tmp_path / "runtime.properties").graphwalker
-    )
     assert captured["connection"]["headed"]
     assert captured["connection"]["keep_browser_open"]
     assert captured["keep_browser_open"] and captured["debug"]
@@ -151,7 +139,7 @@ def test_fresh_cli_initializes_harness_after_configuring_connection(tmp_path):
         def run(model, url, **kwargs):
             from browser_harness import admin, helpers
             assert helpers.NAME == admin.NAME == 'configured-session'
-            assert kwargs['client'].api_key == 'unit-test-key'
+            assert kwargs['core'].request('core.info')['protocol_version'] == '1'
             return {'status': 'PASS'}
         module.run = run
         sys.modules['testwalker.engine'] = module

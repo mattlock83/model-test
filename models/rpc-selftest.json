@@ -1,0 +1,2716 @@
+{
+  "models": [
+    {
+      "id": "rpc-selftest",
+      "name": "Testwalker JSON-RPC self-test",
+      "startElementId": "ready",
+      "generator": "new_york_street_sweeper()",
+      "properties": {
+        "business": {
+          "version": 3,
+          "purpose": "Exercise the native worker through its public protocol, using deterministic response checks and Hegel-generated input boundaries.",
+          "rules": [
+            "Every response identifies JSON-RPC version 2.0.",
+            "Every response includes an identifier, including null when the request cannot be identified."
+          ],
+          "data sets": {
+            "Planning budget": {
+              "Cases": {
+                "description": "Number of generated cases requested from the planner.",
+                "type": "whole number",
+                "required": true,
+                "minimum": 1,
+                "maximum": 200,
+                "example": 1
+              }
+            },
+            "Decision budget": {
+              "Calls": {
+                "description": "Maximum permitted decision API calls.",
+                "type": "whole number",
+                "required": true,
+                "minimum": 1,
+                "maximum": 10000,
+                "example": 100
+              }
+            },
+            "Audit page size": {
+              "Limit": {
+                "description": "Maximum entries in one transcript page.",
+                "type": "whole number",
+                "required": true,
+                "minimum": 1,
+                "maximum": 1024,
+                "example": 128
+              }
+            }
+          },
+          "coverage": {
+            "edges": 100,
+            "states": 100
+          }
+        },
+        "rpc": {
+          "version": 1,
+          "fixtures": {
+            "subject_model": {
+              "models": [
+                {
+                  "id": "subject-fixture",
+                  "name": "Subject lifecycle fixture",
+                  "startElementId": "ready",
+                  "generator": "a_star(reached_vertex(done))",
+                  "properties": {
+                    "business": {
+                      "version": 3,
+                      "purpose": "Demonstrate a complete run through one independently observed transition.",
+                      "rules": [
+                        "Fixture responds to requests."
+                      ],
+                      "data sets": {},
+                      "coverage": {
+                        "edges": 100,
+                        "states": 100
+                      }
+                    }
+                  },
+                  "vertices": [
+                    {
+                      "id": "ready",
+                      "name": "ready",
+                      "properties": {
+                        "business": {
+                          "description": "The fixture is ready to receive a request.",
+                          "rules": [
+                            "Fixture responds to requests."
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "id": "done",
+                      "name": "done",
+                      "properties": {
+                        "business": {
+                          "description": "The fixture has completed its request.",
+                          "rules": [
+                            "Fixture responds to requests."
+                          ]
+                        }
+                      }
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "id": "complete",
+                      "name": "complete",
+                      "sourceVertexId": "ready",
+                      "targetVertexId": "done",
+                      "properties": {
+                        "business": {
+                          "intent": "Complete the fixture request."
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "valid_answer": {
+              "answers": {
+                "state": {
+                  "choice": "accepted",
+                  "confidence": 0.95,
+                  "probabilities": {
+                    "accepted": 0.95,
+                    "rejected": 0.05
+                  }
+                }
+              }
+            },
+            "fields": {
+              "Quantity": {
+                "description": "A small number of items.",
+                "type": "whole number",
+                "required": true,
+                "minimum": 1,
+                "maximum": 4,
+                "example": 2
+              }
+            }
+          },
+          "variables": {
+            "fixture_state": "ready"
+          },
+          "reset": {
+            "method": "core.info"
+          },
+          "rules": {
+            "Every response identifies JSON-RPC version 2.0.": [
+              {
+                "path": "/response/jsonrpc",
+                "equals": "2.0"
+              }
+            ],
+            "Every response includes an identifier, including null when the request cannot be identified.": [
+              {
+                "path": "/response/id",
+                "exists": true
+              }
+            ]
+          },
+          "callbacks": {
+            "target.initialize": {
+              "result": {
+                "capabilities": {
+                  "isolated_checkpoints": false
+                }
+              }
+            },
+            "target.reset": {
+              "set": {
+                "fixture_state": "ready"
+              },
+              "result": {}
+            },
+            "target.execute": {
+              "set": {
+                "fixture_state": "done"
+              },
+              "result": {},
+              "capture": {
+                "last_fixture_edge": "/callback/params/edge/id"
+              }
+            },
+            "target.observe": {
+              "result": {
+                "stage": {
+                  "$ref": "/variables/fixture_state"
+                }
+              }
+            },
+            "target.evaluate": {
+              "result": {
+                "observed": {
+                  "$ref": "/variables/fixture_state"
+                },
+                "checks": [
+                  {
+                    "scope": "state",
+                    "rule": "Fixture responds to requests.",
+                    "status": "met"
+                  },
+                  {
+                    "scope": "global",
+                    "rule": "Fixture responds to requests.",
+                    "status": "met"
+                  }
+                ]
+              }
+            },
+            "target.audit": {
+              "result": [
+                {
+                  "scope": "global",
+                  "rule": "Fixture responds to requests.",
+                  "status": "met"
+                }
+              ]
+            },
+            "target.hook": {
+              "result": {}
+            },
+            "run.event": {
+              "result": {}
+            },
+            "target.close": {
+              "result": {}
+            },
+            "property.evaluate": {
+              "capture": {
+                "sampled_quantity": "/callback/params/input/Quantity",
+                "sampled_violations": "/callback/params/violations"
+              },
+              "result": {
+                "status": "PASS"
+              }
+            }
+          }
+        }
+      },
+      "vertices": [
+        {
+          "id": "ready",
+          "name": "ready",
+          "properties": {
+            "business": {
+              "description": "The worker identifies itself and is ready for another API request.",
+              "rules": [
+                "The worker reports the expected protocol and core capabilities."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/response/result/name",
+                  "equals": "testwalker-core"
+                }
+              ],
+              "rules": {
+                "The worker reports the expected protocol and core capabilities.": [
+                  {
+                    "path": "/response/result",
+                    "exists": true
+                  },
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  },
+                  {
+                    "path": "/response/result/protocol_version",
+                    "equals": "1"
+                  },
+                  {
+                    "path": "/response/result/methods",
+                    "contains": "run.start"
+                  },
+                  {
+                    "path": "/response/result/methods",
+                    "contains": "case.replay"
+                  },
+                  {
+                    "path": "/response/result/methods",
+                    "contains": "property.exercise"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "rejected",
+          "name": "rejected",
+          "properties": {
+            "business": {
+              "description": "The worker rejects invalid application data and remains available.",
+              "rules": [
+                "Application validation returns a structured inconclusive fault with an explanation."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/response/error/code",
+                  "equals": -32001
+                }
+              ],
+              "rules": {
+                "Application validation returns a structured inconclusive fault with an explanation.": [
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  },
+                  {
+                    "path": "/response/result",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/error/message",
+                    "type": "string"
+                  },
+                  {
+                    "path": "/response/error/message",
+                    "length": {
+                      "min": 1
+                    }
+                  },
+                  {
+                    "path": "/response/error/data/status",
+                    "equals": "INCONCLUSIVE"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "parse_error",
+          "name": "parse_error",
+          "properties": {
+            "business": {
+              "description": "The worker cannot parse malformed JSON.",
+              "rules": [
+                "Malformed JSON receives the parse error code and an unknown identifier."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/response/error/code",
+                  "equals": -32700
+                }
+              ],
+              "rules": {
+                "Malformed JSON receives the parse error code and an unknown identifier.": [
+                  {
+                    "path": "/response/result",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/error/message",
+                    "type": "string"
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": null
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "invalid_request",
+          "name": "invalid_request",
+          "properties": {
+            "business": {
+              "description": "The worker rejects an invalid request envelope.",
+              "rules": [
+                "An invalid envelope receives the invalid request code and an unknown identifier."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/response/error/code",
+                  "equals": -32600
+                }
+              ],
+              "rules": {
+                "An invalid envelope receives the invalid request code and an unknown identifier.": [
+                  {
+                    "path": "/response/result",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/error/message",
+                    "type": "string"
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": null
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "invalid_params",
+          "name": "invalid_params",
+          "properties": {
+            "business": {
+              "description": "The worker rejects scalar JSON-RPC parameters.",
+              "rules": [
+                "Scalar parameters receive the invalid parameters code and preserve the request identifier."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/response/error/code",
+                  "equals": -32602
+                }
+              ],
+              "rules": {
+                "Scalar parameters receive the invalid parameters code and preserve the request identifier.": [
+                  {
+                    "path": "/response/result",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/error/message",
+                    "type": "string"
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "unknown_method",
+          "name": "unknown_method",
+          "properties": {
+            "business": {
+              "description": "The worker does not recognize the requested method.",
+              "rules": [
+                "An unknown method receives the method not found code and preserves the request identifier."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/response/error/code",
+                  "equals": -32601
+                }
+              ],
+              "rules": {
+                "An unknown method receives the method not found code and preserves the request identifier.": [
+                  {
+                    "path": "/response/result",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/error/message",
+                    "type": "string"
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "validated",
+          "name": "validated",
+          "properties": {
+            "business": {
+              "description": "The worker has validated the supplied two-state model.",
+              "rules": [
+                "Validation reports the exact fixture inventory and a stable model hash."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/request/method",
+                  "equals": "model.validate"
+                },
+                {
+                  "path": "/response/result/model_hash",
+                  "type": "string"
+                }
+              ],
+              "rules": {
+                "Validation reports the exact fixture inventory and a stable model hash.": [
+                  {
+                    "path": "/response/result",
+                    "exists": true
+                  },
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  },
+                  {
+                    "path": "/response/result/states",
+                    "equals": 2
+                  },
+                  {
+                    "path": "/response/result/edges",
+                    "equals": 1
+                  },
+                  {
+                    "path": "/response/result/data_sets",
+                    "equals": 0
+                  },
+                  {
+                    "path": "/response/result/model_hash",
+                    "length": {
+                      "exact": 64
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "graph_planned",
+          "name": "graph_planned",
+          "properties": {
+            "business": {
+              "description": "GraphWalker has planned the fixture route.",
+              "rules": [
+                "The planned route connects the ready state to the done state through the completion edge."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/request/method",
+                  "equals": "graph.plan"
+                },
+                {
+                  "path": "/response/result",
+                  "type": "array"
+                }
+              ],
+              "rules": {
+                "The planned route connects the ready state to the done state through the completion edge.": [
+                  {
+                    "path": "/response/result",
+                    "exists": true
+                  },
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  },
+                  {
+                    "path": "/response/result",
+                    "length": {
+                      "exact": 3
+                    }
+                  },
+                  {
+                    "path": "/response/result/0",
+                    "subset": {
+                      "id": "ready",
+                      "kind": "state"
+                    }
+                  },
+                  {
+                    "path": "/response/result/1",
+                    "subset": {
+                      "id": "complete",
+                      "kind": "edge",
+                      "sourceVertexId": "ready",
+                      "targetVertexId": "done"
+                    }
+                  },
+                  {
+                    "path": "/response/result/2",
+                    "subset": {
+                      "id": "done",
+                      "kind": "state"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "run_planned",
+          "name": "run_planned",
+          "properties": {
+            "business": {
+              "description": "The worker has produced a complete execution inventory.",
+              "rules": [
+                "The inventory contains the initial check and the transition check without executing either."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/request/method",
+                  "equals": "run.plan"
+                },
+                {
+                  "path": "/response/result/planning/complete",
+                  "equals": true
+                }
+              ],
+              "rules": {
+                "The inventory contains the initial check and the transition check without executing either.": [
+                  {
+                    "path": "/response/result",
+                    "exists": true
+                  },
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  },
+                  {
+                    "path": "/response/result/runtime",
+                    "subset": {
+                      "core": "rust",
+                      "graph": "graphwalker-rs",
+                      "properties": "hegel"
+                    }
+                  },
+                  {
+                    "path": "/response/result/tests",
+                    "length": {
+                      "exact": 2
+                    }
+                  },
+                  {
+                    "path": "/response/result/tests/0/status",
+                    "equals": "NOT_RUN"
+                  },
+                  {
+                    "path": "/response/result/tests/1/status",
+                    "equals": "NOT_RUN"
+                  },
+                  {
+                    "path": "/response/result/planned_path",
+                    "equals": [
+                      {
+                        "id": "ready",
+                        "kind": "state"
+                      },
+                      {
+                        "id": "complete",
+                        "kind": "edge"
+                      },
+                      {
+                        "id": "done",
+                        "kind": "state"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "properties_planned",
+          "name": "properties_planned",
+          "properties": {
+            "business": {
+              "description": "The worker has planned focused Hegel input partitions.",
+              "rules": [
+                "Property planning produces bounded generated partitions with their independent violations."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/request/method",
+                  "equals": "property.plan"
+                },
+                {
+                  "path": "/response/result",
+                  "type": "array"
+                }
+              ],
+              "rules": {
+                "Property planning produces bounded generated partitions with their independent violations.": [
+                  {
+                    "path": "/response/result",
+                    "exists": true
+                  },
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  },
+                  {
+                    "path": "/response/result",
+                    "length": {
+                      "min": 8,
+                      "max": 12
+                    }
+                  },
+                  {
+                    "path": "/response/result/0/kind",
+                    "equals": "generated"
+                  },
+                  {
+                    "path": "/response/result/0/max_examples",
+                    "equals": 1
+                  },
+                  {
+                    "path": "/response/result/0/violations",
+                    "equals": []
+                  },
+                  {
+                    "path": "/response/result/1/violations",
+                    "length": {
+                      "min": 1
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "configured",
+          "name": "configured",
+          "properties": {
+            "business": {
+              "description": "A decision provider policy is configured without making a provider call.",
+              "rules": [
+                "Valid call budgets are accepted without an API request."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/request/method",
+                  "equals": "decision.configure"
+                },
+                {
+                  "path": "/response/result",
+                  "equals": {}
+                }
+              ],
+              "rules": {
+                "Valid call budgets are accepted without an API request.": [
+                  {
+                    "path": "/response/result",
+                    "exists": true
+                  },
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "answer_accepted",
+          "name": "answer_accepted",
+          "properties": {
+            "business": {
+              "description": "The supplied decision answer meets the configured confidence policy.",
+              "rules": [
+                "An internally consistent high-confidence answer returns its selected choice."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/request/method",
+                  "equals": "decision.answer"
+                },
+                {
+                  "path": "/response/result",
+                  "equals": "accepted"
+                }
+              ],
+              "rules": {
+                "An internally consistent high-confidence answer returns its selected choice.": [
+                  {
+                    "path": "/response/result",
+                    "exists": true
+                  },
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "unused_decisions",
+          "name": "unused_decisions",
+          "properties": {
+            "business": {
+              "description": "No decision API calls or cache hits have occurred.",
+              "rules": [
+                "Offline policy checks consume no calls, cache hits or provider tokens."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/request/method",
+                  "equals": "decision.stats"
+                },
+                {
+                  "path": "/response/result/calls",
+                  "equals": 0
+                }
+              ],
+              "rules": {
+                "Offline policy checks consume no calls, cache hits or provider tokens.": [
+                  {
+                    "path": "/response/result",
+                    "exists": true
+                  },
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  },
+                  {
+                    "path": "/response/result",
+                    "equals": {
+                      "calls": 0,
+                      "cache_hits": 0,
+                      "input_tokens": 0,
+                      "output_tokens": 0
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "empty_audit",
+          "name": "empty_audit",
+          "properties": {
+            "business": {
+              "description": "The decision transcript is empty and has no next page.",
+              "rules": [
+                "An empty transcript reports zero entries and a null continuation offset."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/request/method",
+                  "equals": "decision.audit"
+                },
+                {
+                  "path": "/response/result/entries",
+                  "equals": []
+                }
+              ],
+              "rules": {
+                "An empty transcript reports zero entries and a null continuation offset.": [
+                  {
+                    "path": "/response/result",
+                    "exists": true
+                  },
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  },
+                  {
+                    "path": "/response/result",
+                    "equals": {
+                      "entries": [],
+                      "total": 0,
+                      "next_offset": null
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "empty_results",
+          "name": "empty_results",
+          "properties": {
+            "business": {
+              "description": "A fresh worker has no completed execution result.",
+              "rules": [
+                "Results are null until a run completes."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/request/method",
+                  "equals": "run.results"
+                },
+                {
+                  "path": "/response/result",
+                  "equals": null
+                }
+              ],
+              "rules": {
+                "Results are null until a run completes.": [
+                  {
+                    "path": "/response/result",
+                    "exists": true
+                  },
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "idle_cancel",
+          "name": "idle_cancel",
+          "properties": {
+            "business": {
+              "description": "There is no active run to cancel.",
+              "rules": [
+                "Cancelling an idle worker reports that no active run was cancelled."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/request/method",
+                  "equals": "run.cancel"
+                },
+                {
+                  "path": "/response/result/cancelled",
+                  "equals": false
+                }
+              ],
+              "rules": {
+                "Cancelling an idle worker reports that no active run was cancelled.": [
+                  {
+                    "path": "/response/result",
+                    "exists": true
+                  },
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  },
+                  {
+                    "path": "/response/result",
+                    "equals": {
+                      "cancelled": false
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "run_passed",
+          "name": "run_passed",
+          "properties": {
+            "business": {
+              "description": "The subject completed both fixture checks and closed its target.",
+              "rules": [
+                "Successful execution verifies the full fixture graph and invokes target cleanup."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/request/method",
+                  "equals": "run.start"
+                },
+                {
+                  "path": "/response/result/status",
+                  "equals": "PASS"
+                }
+              ],
+              "rules": {
+                "Successful execution verifies the full fixture graph and invokes target cleanup.": [
+                  {
+                    "path": "/response/result",
+                    "exists": true
+                  },
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  },
+                  {
+                    "path": "/response/result/coverage/edges/verified",
+                    "equals": 1
+                  },
+                  {
+                    "path": "/response/result/coverage/states/verified",
+                    "equals": 2
+                  },
+                  {
+                    "path": "/response/result/test_summary",
+                    "equals": {
+                      "PASS": 2,
+                      "FAIL": 0,
+                      "INCONCLUSIVE": 0,
+                      "SKIPPED": 0
+                    }
+                  },
+                  {
+                    "path": "/response/result/input_attempts",
+                    "equals": 0
+                  },
+                  {
+                    "path": "/callback_methods",
+                    "contains": "target.execute"
+                  },
+                  {
+                    "path": "/callback_methods",
+                    "contains": "target.observe"
+                  },
+                  {
+                    "path": "/callback_methods",
+                    "contains": "target.close"
+                  },
+                  {
+                    "path": "/variables/fixture_state",
+                    "equals": "done"
+                  },
+                  {
+                    "path": "/variables/last_fixture_edge",
+                    "equals": "complete"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "run_cancelled",
+          "name": "run_cancelled",
+          "properties": {
+            "business": {
+              "description": "The subject stopped cooperatively after cancellation and closed its target.",
+              "rules": [
+                "Cancellation leaves both selected checks skipped, verifies no edges, and performs cleanup."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/request/method",
+                  "equals": "run.start"
+                },
+                {
+                  "path": "/response/result/status",
+                  "equals": "INCONCLUSIVE"
+                }
+              ],
+              "rules": {
+                "Cancellation leaves both selected checks skipped, verifies no edges, and performs cleanup.": [
+                  {
+                    "path": "/response/result",
+                    "exists": true
+                  },
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  },
+                  {
+                    "path": "/response/result/error",
+                    "contains": "Run cancelled"
+                  },
+                  {
+                    "path": "/response/result/coverage/edges/verified",
+                    "equals": 0
+                  },
+                  {
+                    "path": "/response/result/test_summary",
+                    "equals": {
+                      "PASS": 0,
+                      "FAIL": 0,
+                      "INCONCLUSIVE": 0,
+                      "SKIPPED": 2
+                    }
+                  },
+                  {
+                    "path": "/response/result/tests/0/reason",
+                    "contains": "cancelled"
+                  },
+                  {
+                    "path": "/response/result/tests/1/reason",
+                    "contains": "cancelled"
+                  },
+                  {
+                    "path": "/callback_methods",
+                    "contains": "target.initialize"
+                  },
+                  {
+                    "path": "/callback_methods",
+                    "contains": "target.hook"
+                  },
+                  {
+                    "path": "/callback_methods",
+                    "contains": "target.close"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "saved_success",
+          "name": "saved_success",
+          "properties": {
+            "business": {
+              "description": "The worker returns its last successful report.",
+              "rules": [
+                "The retrieved report exactly matches the previously completed execution."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/request/method",
+                  "equals": "run.results"
+                },
+                {
+                  "path": "/response/result/status",
+                  "equals": "PASS"
+                }
+              ],
+              "rules": {
+                "The retrieved report exactly matches the previously completed execution.": [
+                  {
+                    "path": "/response/result",
+                    "exists": true
+                  },
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  },
+                  {
+                    "path": "/response/result",
+                    "equals": {
+                      "$ref": "/variables/saved_success"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "saved_cancellation",
+          "name": "saved_cancellation",
+          "properties": {
+            "business": {
+              "description": "The worker returns its last cancelled report.",
+              "rules": [
+                "The retrieved report exactly matches the previously completed execution."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/request/method",
+                  "equals": "run.results"
+                },
+                {
+                  "path": "/response/result/status",
+                  "equals": "INCONCLUSIVE"
+                }
+              ],
+              "rules": {
+                "The retrieved report exactly matches the previously completed execution.": [
+                  {
+                    "path": "/response/result",
+                    "exists": true
+                  },
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  },
+                  {
+                    "path": "/response/result",
+                    "equals": {
+                      "$ref": "/variables/saved_cancellation"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "stopped",
+          "name": "stopped",
+          "properties": {
+            "business": {
+              "description": "The worker acknowledged shutdown and exited successfully.",
+              "rules": [
+                "Graceful shutdown returns an empty result and exits with status zero."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/request/method",
+                  "equals": "core.shutdown"
+                },
+                {
+                  "path": "/process/running",
+                  "equals": false
+                }
+              ],
+              "rules": {
+                "Graceful shutdown returns an empty result and exits with status zero.": [
+                  {
+                    "path": "/response/result",
+                    "exists": true
+                  },
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  },
+                  {
+                    "path": "/response/result",
+                    "equals": {}
+                  },
+                  {
+                    "path": "/process/exit_code",
+                    "equals": 0
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "replay_passed",
+          "name": "replay_passed",
+          "properties": {
+            "business": {
+              "description": "The subject replayed the selected completion transition independently.",
+              "rules": [
+                "A saved graph case replays from a fresh fixture and executes only its selected test."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/request/method",
+                  "equals": "case.replay"
+                },
+                {
+                  "path": "/response/result/status",
+                  "equals": "PASS"
+                }
+              ],
+              "rules": {
+                "A saved graph case replays from a fresh fixture and executes only its selected test.": [
+                  {
+                    "path": "/response/result",
+                    "exists": true
+                  },
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  },
+                  {
+                    "path": "/response/result/replay",
+                    "equals": true
+                  },
+                  {
+                    "path": "/response/result/tests",
+                    "length": {
+                      "exact": 1
+                    }
+                  },
+                  {
+                    "path": "/response/result/tests/0/kind",
+                    "equals": "graph"
+                  },
+                  {
+                    "path": "/response/result/tests/0/journey",
+                    "equals": "complete"
+                  },
+                  {
+                    "path": "/response/result/test_summary",
+                    "equals": {
+                      "PASS": 1,
+                      "FAIL": 0,
+                      "INCONCLUSIVE": 0,
+                      "SKIPPED": 0
+                    }
+                  },
+                  {
+                    "path": "/response/result/input_attempts",
+                    "equals": 0
+                  },
+                  {
+                    "path": "/callback_methods",
+                    "contains": "target.reset"
+                  },
+                  {
+                    "path": "/callback_methods",
+                    "contains": "target.execute"
+                  },
+                  {
+                    "path": "/callback_methods",
+                    "contains": "target.close"
+                  },
+                  {
+                    "path": "/variables/fixture_state",
+                    "equals": "done"
+                  },
+                  {
+                    "path": "/variables/last_fixture_edge",
+                    "equals": "complete"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "samples_listed",
+          "name": "samples_listed",
+          "properties": {
+            "business": {
+              "description": "The worker lists the declared numeric input boundaries.",
+              "rules": [
+                "Boundary inspection preserves the nominal example and both invalid sides of the range."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/request/method",
+                  "equals": "property.samples"
+                },
+                {
+                  "path": "/response/result",
+                  "exists": true
+                }
+              ],
+              "rules": {
+                "Boundary inspection preserves the nominal example and both invalid sides of the range.": [
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  },
+                  {
+                    "path": "/response/result",
+                    "type": "array"
+                  },
+                  {
+                    "path": "/response/result",
+                    "length": {
+                      "exact": 10
+                    }
+                  },
+                  {
+                    "path": "/response/result/0",
+                    "equals": [
+                      "valid example",
+                      2
+                    ]
+                  },
+                  {
+                    "path": "/response/result",
+                    "contains": [
+                      "minimum -1",
+                      0
+                    ]
+                  },
+                  {
+                    "path": "/response/result",
+                    "contains": [
+                      "maximum +1",
+                      5
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "property_exercised",
+          "name": "property_exercised",
+          "properties": {
+            "business": {
+              "description": "Hegel generated the selected valid partition and obtained an adapter verdict.",
+              "rules": [
+                "A selected valid Hegel partition invokes the evaluation callback with its exact input and no violations."
+              ]
+            },
+            "rpc": {
+              "match": [
+                {
+                  "path": "/request/method",
+                  "equals": "property.exercise"
+                },
+                {
+                  "path": "/response/result",
+                  "exists": true
+                }
+              ],
+              "rules": {
+                "A selected valid Hegel partition invokes the evaluation callback with its exact input and no violations.": [
+                  {
+                    "path": "/response/error",
+                    "exists": false
+                  },
+                  {
+                    "path": "/response/id",
+                    "equals": {
+                      "$ref": "/request/id"
+                    }
+                  },
+                  {
+                    "path": "/response/result",
+                    "equals": {
+                      "status": "PASS"
+                    }
+                  },
+                  {
+                    "path": "/callback_methods",
+                    "equals": [
+                      "property.evaluate"
+                    ]
+                  },
+                  {
+                    "path": "/variables/sampled_quantity",
+                    "equals": 2
+                  },
+                  {
+                    "path": "/variables/sampled_violations",
+                    "equals": []
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "validate_model",
+          "name": "validate_model",
+          "sourceVertexId": "ready",
+          "targetVertexId": "validated",
+          "properties": {
+            "business": {
+              "intent": "Validate the supplied fixture model."
+            },
+            "rpc": {
+              "request": {
+                "method": "model.validate",
+                "params": {
+                  "model": {
+                    "$ref": "/fixtures/subject_model"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "reject_model",
+          "name": "reject_model",
+          "sourceVertexId": "ready",
+          "targetVertexId": "rejected",
+          "properties": {
+            "business": {
+              "intent": "Reject a model with missing business metadata."
+            },
+            "rpc": {
+              "request": {
+                "method": "model.validate",
+                "params": {
+                  "model": {
+                    "models": [
+                      {}
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "plan_graph",
+          "name": "plan_graph",
+          "sourceVertexId": "ready",
+          "targetVertexId": "graph_planned",
+          "properties": {
+            "business": {
+              "intent": "Ask GraphWalker for a connected fixture route."
+            },
+            "rpc": {
+              "request": {
+                "method": "graph.plan",
+                "params": {
+                  "model": {
+                    "$ref": "/fixtures/subject_model"
+                  },
+                  "options": {
+                    "max_steps": 10
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "plan_run",
+          "name": "plan_run",
+          "sourceVertexId": "ready",
+          "targetVertexId": "run_planned",
+          "properties": {
+            "business": {
+              "intent": "Plan a run using the requested number of generated cases.",
+              "data set": "Planning budget",
+              "accepted at": "run_planned",
+              "rejected at": "rejected"
+            },
+            "rpc": {
+              "request": {
+                "method": "run.plan",
+                "params": {
+                  "model": {
+                    "$ref": "/fixtures/subject_model"
+                  },
+                  "options": {
+                    "cases": {
+                      "$ref": "/input/Cases"
+                    },
+                    "max_steps": 10
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "reject_planning_budget",
+          "name": "reject_planning_budget",
+          "sourceVertexId": "ready",
+          "targetVertexId": "rejected",
+          "properties": {
+            "business": {
+              "intent": "Reject a run plan with a case budget below the supported minimum.",
+              "data set": "Planning budget",
+              "accepted at": "run_planned",
+              "rejected at": "rejected",
+              "example": {
+                "Cases": 0
+              }
+            },
+            "rpc": {
+              "request": {
+                "method": "run.plan",
+                "params": {
+                  "model": {
+                    "$ref": "/fixtures/subject_model"
+                  },
+                  "options": {
+                    "cases": {
+                      "$ref": "/input/Cases"
+                    },
+                    "max_steps": 10
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "reject_unknown_option",
+          "name": "reject_unknown_option",
+          "sourceVertexId": "ready",
+          "targetVertexId": "rejected",
+          "properties": {
+            "business": {
+              "intent": "Reject an unrecognized execution option."
+            },
+            "rpc": {
+              "request": {
+                "method": "run.plan",
+                "params": {
+                  "model": {
+                    "$ref": "/fixtures/subject_model"
+                  },
+                  "options": {
+                    "unexpected_option": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "plan_properties",
+          "name": "plan_properties",
+          "sourceVertexId": "ready",
+          "targetVertexId": "properties_planned",
+          "properties": {
+            "business": {
+              "intent": "Plan focused Hegel boundaries for a small quantity."
+            },
+            "rpc": {
+              "request": {
+                "method": "property.plan",
+                "params": {
+                  "fields": {
+                    "$ref": "/fixtures/fields"
+                  },
+                  "options": {
+                    "cases": 1,
+                    "input_mode": "focused"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "configure_decisions",
+          "name": "configure_decisions",
+          "sourceVertexId": "ready",
+          "targetVertexId": "configured",
+          "properties": {
+            "business": {
+              "intent": "Set a valid decision call allowance without contacting the provider.",
+              "data set": "Decision budget",
+              "accepted at": "configured",
+              "rejected at": "rejected"
+            },
+            "rpc": {
+              "request": {
+                "method": "decision.configure",
+                "params": {
+                  "provider": "jev",
+                  "api_key": "synthetic-offline-key",
+                  "threshold": 0.85,
+                  "max_calls": {
+                    "$ref": "/input/Calls"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "reject_decision_budget",
+          "name": "reject_decision_budget",
+          "sourceVertexId": "ready",
+          "targetVertexId": "rejected",
+          "properties": {
+            "business": {
+              "intent": "Reject a decision call allowance above the supported maximum.",
+              "data set": "Decision budget",
+              "accepted at": "configured",
+              "rejected at": "rejected",
+              "example": {
+                "Calls": 10001
+              }
+            },
+            "rpc": {
+              "request": {
+                "method": "decision.configure",
+                "params": {
+                  "provider": "jev",
+                  "api_key": "synthetic-offline-key",
+                  "threshold": 0.85,
+                  "max_calls": {
+                    "$ref": "/input/Calls"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "accept_answer",
+          "name": "accept_answer",
+          "sourceVertexId": "configured",
+          "targetVertexId": "answer_accepted",
+          "properties": {
+            "business": {
+              "intent": "Check the supplied high-confidence decision answer locally."
+            },
+            "rpc": {
+              "request": {
+                "method": "decision.answer",
+                "params": {
+                  "result": {
+                    "$ref": "/fixtures/valid_answer"
+                  },
+                  "name": "state",
+                  "choices": [
+                    "accepted",
+                    "rejected"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "reject_uncertain_answer",
+          "name": "reject_uncertain_answer",
+          "sourceVertexId": "configured",
+          "targetVertexId": "rejected",
+          "properties": {
+            "business": {
+              "intent": "Preserve an uncertain answer as inconclusive."
+            },
+            "rpc": {
+              "request": {
+                "method": "decision.answer",
+                "params": {
+                  "result": {
+                    "answers": {
+                      "state": {
+                        "choice": "accepted",
+                        "confidence": 0.6,
+                        "probabilities": {
+                          "accepted": 0.6,
+                          "rejected": 0.4
+                        }
+                      }
+                    }
+                  },
+                  "name": "state",
+                  "choices": [
+                    "accepted",
+                    "rejected"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "reject_inconsistent_answer",
+          "name": "reject_inconsistent_answer",
+          "sourceVertexId": "configured",
+          "targetVertexId": "rejected",
+          "properties": {
+            "business": {
+              "intent": "Reject a choice that contradicts the reported probabilities."
+            },
+            "rpc": {
+              "request": {
+                "method": "decision.answer",
+                "params": {
+                  "result": {
+                    "answers": {
+                      "state": {
+                        "choice": "accepted",
+                        "confidence": 0.99,
+                        "probabilities": {
+                          "accepted": 0.1,
+                          "rejected": 0.9
+                        }
+                      }
+                    }
+                  },
+                  "name": "state",
+                  "choices": [
+                    "accepted",
+                    "rejected"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "inspect_usage",
+          "name": "inspect_usage",
+          "sourceVertexId": "ready",
+          "targetVertexId": "unused_decisions",
+          "properties": {
+            "business": {
+              "intent": "Verify that no provider calls have been made."
+            },
+            "rpc": {
+              "request": {
+                "method": "decision.stats"
+              }
+            }
+          }
+        },
+        {
+          "id": "read_empty_audit",
+          "name": "read_empty_audit",
+          "sourceVertexId": "ready",
+          "targetVertexId": "empty_audit",
+          "properties": {
+            "business": {
+              "intent": "Read an empty transcript with the requested page limit.",
+              "data set": "Audit page size",
+              "accepted at": "empty_audit",
+              "rejected at": "rejected"
+            },
+            "rpc": {
+              "request": {
+                "method": "decision.audit",
+                "params": {
+                  "offset": 0,
+                  "limit": {
+                    "$ref": "/input/Limit"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "reject_audit_limit",
+          "name": "reject_audit_limit",
+          "sourceVertexId": "ready",
+          "targetVertexId": "rejected",
+          "properties": {
+            "business": {
+              "intent": "Reject an audit page size above the supported maximum.",
+              "data set": "Audit page size",
+              "accepted at": "empty_audit",
+              "rejected at": "rejected",
+              "example": {
+                "Limit": 1025
+              }
+            },
+            "rpc": {
+              "request": {
+                "method": "decision.audit",
+                "params": {
+                  "offset": 0,
+                  "limit": {
+                    "$ref": "/input/Limit"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "reject_audit_offset",
+          "name": "reject_audit_offset",
+          "sourceVertexId": "ready",
+          "targetVertexId": "rejected",
+          "properties": {
+            "business": {
+              "intent": "Reject an offset beyond the empty transcript."
+            },
+            "rpc": {
+              "request": {
+                "method": "decision.audit",
+                "params": {
+                  "offset": 1,
+                  "limit": 1
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "inspect_fresh_results",
+          "name": "inspect_fresh_results",
+          "sourceVertexId": "ready",
+          "targetVertexId": "empty_results",
+          "properties": {
+            "business": {
+              "intent": "Start a fresh worker and inspect its initial results."
+            },
+            "rpc": {
+              "request": {
+                "method": "run.results",
+                "restart": true
+              }
+            }
+          }
+        },
+        {
+          "id": "cancel_idle",
+          "name": "cancel_idle",
+          "sourceVertexId": "ready",
+          "targetVertexId": "idle_cancel",
+          "properties": {
+            "business": {
+              "intent": "Attempt cancellation when no execution is active."
+            },
+            "rpc": {
+              "request": {
+                "method": "run.cancel"
+              }
+            }
+          }
+        },
+        {
+          "id": "execute_fixture",
+          "name": "execute_fixture",
+          "sourceVertexId": "ready",
+          "targetVertexId": "run_passed",
+          "properties": {
+            "business": {
+              "intent": "Execute the complete fixture graph with independent callback state."
+            },
+            "rpc": {
+              "request": {
+                "method": "run.start",
+                "params": {
+                  "model": {
+                    "$ref": "/fixtures/subject_model"
+                  },
+                  "options": {
+                    "evaluator": "adapter",
+                    "input_mode": "none",
+                    "max_steps": 10
+                  }
+                }
+              },
+              "capture": {
+                "saved_success": "/response/result"
+              }
+            }
+          }
+        },
+        {
+          "id": "read_success",
+          "name": "read_success",
+          "sourceVertexId": "run_passed",
+          "targetVertexId": "saved_success",
+          "properties": {
+            "business": {
+              "intent": "Retrieve the exact successful report from the worker."
+            },
+            "rpc": {
+              "request": {
+                "method": "run.results"
+              }
+            }
+          }
+        },
+        {
+          "id": "cancel_fixture",
+          "name": "cancel_fixture",
+          "sourceVertexId": "ready",
+          "targetVertexId": "run_cancelled",
+          "properties": {
+            "business": {
+              "intent": "Cancel the subject while it initializes its target."
+            },
+            "rpc": {
+              "request": {
+                "method": "run.start",
+                "params": {
+                  "model": {
+                    "$ref": "/fixtures/subject_model"
+                  },
+                  "options": {
+                    "evaluator": "adapter",
+                    "input_mode": "none",
+                    "max_steps": 10
+                  }
+                }
+              },
+              "capture": {
+                "saved_cancellation": "/response/result"
+              },
+              "callbacks": {
+                "target.initialize": {
+                  "request": {
+                    "method": "run.cancel"
+                  },
+                  "result": {
+                    "capabilities": {
+                      "isolated_checkpoints": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "read_cancellation",
+          "name": "read_cancellation",
+          "sourceVertexId": "run_cancelled",
+          "targetVertexId": "saved_cancellation",
+          "properties": {
+            "business": {
+              "intent": "Retrieve the exact cancelled report from the worker."
+            },
+            "rpc": {
+              "request": {
+                "method": "run.results"
+              }
+            }
+          }
+        },
+        {
+          "id": "reject_missing_replay",
+          "name": "reject_missing_replay",
+          "sourceVertexId": "ready",
+          "targetVertexId": "rejected",
+          "properties": {
+            "business": {
+              "intent": "Reject a replay request that supplies no saved case."
+            },
+            "rpc": {
+              "request": {
+                "method": "case.replay",
+                "params": {
+                  "model": {
+                    "$ref": "/fixtures/subject_model"
+                  },
+                  "options": {
+                    "evaluator": "adapter",
+                    "input_mode": "none",
+                    "max_steps": 10
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "unknown_api",
+          "name": "unknown_api",
+          "sourceVertexId": "ready",
+          "targetVertexId": "unknown_method",
+          "properties": {
+            "business": {
+              "intent": "Request an API method that does not exist."
+            },
+            "rpc": {
+              "request": {
+                "method": "does.not.exist"
+              }
+            }
+          }
+        },
+        {
+          "id": "malformed_json",
+          "name": "malformed_json",
+          "sourceVertexId": "ready",
+          "targetVertexId": "parse_error",
+          "properties": {
+            "business": {
+              "intent": "Send malformed JSON and require a recoverable parse error."
+            },
+            "rpc": {
+              "request": {
+                "raw": "{broken"
+              }
+            }
+          }
+        },
+        {
+          "id": "missing_envelope",
+          "name": "missing_envelope",
+          "sourceVertexId": "ready",
+          "targetVertexId": "invalid_request",
+          "properties": {
+            "business": {
+              "intent": "Reject a request with no required envelope members."
+            },
+            "rpc": {
+              "request": {
+                "envelope": {}
+              }
+            }
+          }
+        },
+        {
+          "id": "invalid_identifier",
+          "name": "invalid_identifier",
+          "sourceVertexId": "ready",
+          "targetVertexId": "invalid_request",
+          "properties": {
+            "business": {
+              "intent": "Reject a boolean request identifier."
+            },
+            "rpc": {
+              "request": {
+                "envelope": {
+                  "jsonrpc": "2.0",
+                  "id": true,
+                  "method": "core.info"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "scalar_parameters",
+          "name": "scalar_parameters",
+          "sourceVertexId": "ready",
+          "targetVertexId": "invalid_params",
+          "properties": {
+            "business": {
+              "intent": "Reject scalar parameters even on a parameterless method."
+            },
+            "rpc": {
+              "request": {
+                "envelope": {
+                  "jsonrpc": "2.0",
+                  "id": "scalar-params",
+                  "method": "core.info",
+                  "params": 7
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "shutdown_worker",
+          "name": "shutdown_worker",
+          "sourceVertexId": "ready",
+          "targetVertexId": "stopped",
+          "properties": {
+            "business": {
+              "intent": "Gracefully shut down the subject and observe its exit."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.shutdown",
+                "wait_for_exit": true
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_rejected",
+          "name": "return_from_rejected",
+          "sourceVertexId": "rejected",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_parse_error",
+          "name": "return_from_parse_error",
+          "sourceVertexId": "parse_error",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_invalid_request",
+          "name": "return_from_invalid_request",
+          "sourceVertexId": "invalid_request",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_invalid_params",
+          "name": "return_from_invalid_params",
+          "sourceVertexId": "invalid_params",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_unknown_method",
+          "name": "return_from_unknown_method",
+          "sourceVertexId": "unknown_method",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_validated",
+          "name": "return_from_validated",
+          "sourceVertexId": "validated",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_graph_planned",
+          "name": "return_from_graph_planned",
+          "sourceVertexId": "graph_planned",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_run_planned",
+          "name": "return_from_run_planned",
+          "sourceVertexId": "run_planned",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_properties_planned",
+          "name": "return_from_properties_planned",
+          "sourceVertexId": "properties_planned",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_configured",
+          "name": "return_from_configured",
+          "sourceVertexId": "configured",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_answer_accepted",
+          "name": "return_from_answer_accepted",
+          "sourceVertexId": "answer_accepted",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_unused_decisions",
+          "name": "return_from_unused_decisions",
+          "sourceVertexId": "unused_decisions",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_empty_audit",
+          "name": "return_from_empty_audit",
+          "sourceVertexId": "empty_audit",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_empty_results",
+          "name": "return_from_empty_results",
+          "sourceVertexId": "empty_results",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_idle_cancel",
+          "name": "return_from_idle_cancel",
+          "sourceVertexId": "idle_cancel",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_run_passed",
+          "name": "return_from_run_passed",
+          "sourceVertexId": "run_passed",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_run_cancelled",
+          "name": "return_from_run_cancelled",
+          "sourceVertexId": "run_cancelled",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_saved_success",
+          "name": "return_from_saved_success",
+          "sourceVertexId": "saved_success",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_saved_cancellation",
+          "name": "return_from_saved_cancellation",
+          "sourceVertexId": "saved_cancellation",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_stopped",
+          "name": "return_from_stopped",
+          "sourceVertexId": "stopped",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready for the next scenario."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info",
+                "restart": true
+              }
+            }
+          }
+        },
+        {
+          "id": "replay_completion",
+          "name": "replay_completion",
+          "sourceVertexId": "run_passed",
+          "targetVertexId": "replay_passed",
+          "properties": {
+            "business": {
+              "intent": "Replay the saved completion case and rebuild its fixture."
+            },
+            "rpc": {
+              "request": {
+                "method": "case.replay",
+                "params": {
+                  "model": {
+                    "$ref": "/fixtures/subject_model"
+                  },
+                  "options": {
+                    "evaluator": "adapter",
+                    "input_mode": "none",
+                    "max_steps": 10
+                  },
+                  "case": {
+                    "$ref": "/variables/saved_success/tests/1/replay_recipe"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_replay",
+          "name": "return_from_replay",
+          "sourceVertexId": "replay_passed",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready after replay."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "inspect_samples_listed",
+          "name": "inspect_samples_listed",
+          "sourceVertexId": "ready",
+          "targetVertexId": "samples_listed",
+          "properties": {
+            "business": {
+              "intent": "The worker lists the declared numeric input boundaries."
+            },
+            "rpc": {
+              "request": {
+                "method": "property.samples",
+                "params": {
+                  "fields": {
+                    "$ref": "/fixtures/fields"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_samples_listed",
+          "name": "return_from_samples_listed",
+          "sourceVertexId": "samples_listed",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready after property inspection."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        },
+        {
+          "id": "inspect_property_exercised",
+          "name": "inspect_property_exercised",
+          "sourceVertexId": "ready",
+          "targetVertexId": "property_exercised",
+          "properties": {
+            "business": {
+              "intent": "Hegel generated the selected valid partition and obtained an adapter verdict."
+            },
+            "rpc": {
+              "request": {
+                "method": "property.exercise",
+                "params": {
+                  "fields": {
+                    "$ref": "/fixtures/fields"
+                  },
+                  "options": {
+                    "cases": 1,
+                    "input_mode": "focused",
+                    "shrink": false
+                  },
+                  "phase_ids": [
+                    "focused/0/0"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "return_from_property_exercised",
+          "name": "return_from_property_exercised",
+          "sourceVertexId": "property_exercised",
+          "targetVertexId": "ready",
+          "properties": {
+            "business": {
+              "intent": "Verify that the worker is ready after property inspection."
+            },
+            "rpc": {
+              "request": {
+                "method": "core.info"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

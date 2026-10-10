@@ -3,9 +3,10 @@ import json
 import httpx
 import pytest
 from jev_ultrafast.browser import StalePage
+from native_provider import JevClient, validate_answer
 
 from testwalker.errors import Inconclusive
-from testwalker.jev import JevBrowser, JevClient, Oracle
+from testwalker.jev import JevBrowser, Oracle
 
 
 def answer(choice, options, confidence=1):
@@ -19,7 +20,9 @@ def answer(choice, options, confidence=1):
 class Decisions:
     """Fake remote choices, while exercising the real upstream answer validator."""
 
-    answer = JevClient.answer
+    def answer(self, result, name, choices):
+        return validate_answer(self.threshold, result, name, choices)
+
     threshold = 0.85
 
     def __init__(self, choose):
@@ -186,11 +189,13 @@ def test_untrusted_provider_choices_are_rejected(bad):
 def test_provider_error_cannot_leak_response_secrets(monkeypatch):
     monkeypatch.setenv("TYPESAFE_API_KEY", "secret-example")
     http = httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(401, text="secret-example")))
-    with JevClient(http=http).http:
-        client = JevClient(http=http)
+    client = JevClient(http=http)
+    try:
         with pytest.raises(Inconclusive, match="provider failed") as error:
             client.ask({}, {})
         assert "secret-example" not in str(error.value)
+    finally:
+        client.close()
 
 
 def test_oracle_identifies_state_without_receiving_expected_state(model):
@@ -478,14 +483,23 @@ def test_outcome_checks_do_not_receive_irrelevant_input_comparison_context(model
         }
 
     client = Decisions(choose)
-    result = Oracle(client, model).check(DOM("http://demo.test").observe(), "accepted", {"Places": 2})
+    page = DOM("http://demo.test").observe()
+    page["semantics"] = {
+        "editable_fields": [{"label": "Places", "current_value": "old value"}],
+        "alerts": ["Check the submitted count."],
+    }
+    result = Oracle(client, model).check(page, "accepted", {"Places": 2})
     assert result["status"] == "PASS"
     outcome = next(s for s, q in client.requests if "rule_0" in q)
     comparison = next(s for s, q in client.requests if "rule_1" in q)
     assert "submitted_business_data" not in outcome
     assert all("value" not in e for e in outcome["elements"])
+    assert "current_value" not in outcome["accessibility"]["editable_fields"][0]
+    assert outcome["accessibility"]["alerts"] == ["Check the submitted count."]
     assert comparison["submitted_business_data"] == {"Places": 2}
     assert comparison["elements"][0]["value"] == "old value"
+    assert comparison["accessibility"]["editable_fields"][0]["current_value"] == "old value"
+    assert page["semantics"]["editable_fields"][0]["current_value"] == "old value"
 
 
 @pytest.mark.parametrize("choice,expected", [("message_0", "PASS"), ("NONE", "FAIL")])
@@ -965,7 +979,7 @@ def test_large_global_audit_shares_rule_text_without_losing_observations(model):
         assert saved["visible_text"] == original["evidence"]["text"]
 
 
-def test_global_audit_still_stops_when_distinct_evidence_exceeds_budget(model):
+def test_global_audit_batches_large_distinct_evidence_without_dropping_inputs(model):
     records = [
         {
             "status": "PASS",
@@ -977,10 +991,14 @@ def test_global_audit_still_stops_when_distinct_evidence_exceeds_budget(model):
         }
         for i in range(80)
     ]
-    client = Decisions(lambda *_: {})
-    with pytest.raises(Inconclusive, match="evidence budget"):
-        Oracle(client, model).audit_globals(records, model.business["rules"])
-    assert not client.requests
+    client = Decisions(lambda *_: {"global_0": "met"})
+    result = Oracle(client, model).audit_globals(records, model.business["rules"])
+    assert result[0]["status"] == "met"
+    audited = [context for context, questions in client.requests if "global_0" in questions]
+    assert all(len(json.dumps(context)) <= 16000 for context in audited)
+    assert [
+        scenario["submitted_values"] for context in audited for scenario in context["executed_scenarios"]
+    ] == [record["input"] for record in records]
 
 
 @pytest.mark.parametrize(

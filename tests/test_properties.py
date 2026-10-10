@@ -1,8 +1,8 @@
 import pytest
-from hypothesis import strategies as st
 
 from testwalker import properties
 from testwalker.errors import Defect, Inconclusive
+from testwalker.input_strategies import StrategyProvider
 
 
 def test_boundaries_include_every_partition_even_with_one_generated_example(model):
@@ -20,8 +20,14 @@ def test_boundaries_include_every_partition_even_with_one_generated_example(mode
     assert any(not r["violations"] for r in recorded)
 
 
-def test_real_hypothesis_shrinks_reproducible_failure(model, monkeypatch):
-    monkeypatch.setattr(properties, "strategy", lambda _: st.integers(0, 100))
+def test_real_hegel_shrinks_reproducible_failure(model):
+    provider = StrategyProvider(
+        lambda context, default: (
+            {"kind": "integer", "minimum": 0, "maximum": 100}
+            if context["field_name"]
+            else {"kind": "object", "fields": {"Places": {"kind": "integer", "minimum": 0, "maximum": 100}}}
+        )
+    )
     recorded = []
 
     def execute(data, invalid):
@@ -29,7 +35,12 @@ def test_real_hypothesis_shrinks_reproducible_failure(model, monkeypatch):
 
     with pytest.raises(Defect) as failure:
         properties.exercise(
-            model.data_sets["Reservation"], execute, recorded.append, cases=30, mode="generated"
+            model.data_sets["Reservation"],
+            execute,
+            recorded.append,
+            cases=30,
+            mode="generated",
+            strategy_provider=provider,
         )
     assert failure.value.case["input"] == {"Places": 5}
     assert recorded[-1]["status"] == "FAIL"
@@ -120,15 +131,12 @@ def test_input_modes_select_only_requested_work(model, mode):
     )
 
 
-def test_default_uses_real_hypothesis_and_preserves_each_partition(model):
-    from hypothesis import currently_in_test_context
-
+def test_default_uses_native_hegel_and_preserves_each_partition(model):
     fields = model.data_sets["Reservation"]
     plan = properties.plan_cases(fields)
     recorded = []
 
     def execute(data, invalid):
-        assert currently_in_test_context()
         return {"status": "PASS"}
 
     properties.exercise(fields, execute, recorded.append)
@@ -181,9 +189,9 @@ def test_provider_cannot_change_the_intended_violation_or_spend_calls_on_discard
 
     fields = model.data_sets["Reservation"]
     phase = next(p for p in properties.plan_cases(fields) if p["partition"] == "maximum +1")
-    provider = StrategyProvider(lambda context, default: st.just(2))
+    provider = StrategyProvider(lambda context, default: {"kind": "literal", "value": 2})
     recorded = []
-    with pytest.raises(Inconclusive, match="Unsatisfiable"):
+    with pytest.raises(Inconclusive, match="Hegel could not establish"):
         properties.exercise(
             fields,
             lambda *_: pytest.fail("Filtered input must not reach browser"),

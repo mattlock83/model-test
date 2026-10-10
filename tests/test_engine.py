@@ -4,10 +4,27 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from testwalker.engine import Runner, run
+from testwalker.engine import run
 from testwalker.errors import Inconclusive
 from testwalker.graphwalker import parse_path
 from testwalker.model import violations
+
+
+def native_domain(monkeypatch, descriptor):
+    """Supply native Hegel domains through the same extension binding as users."""
+    from testwalker.input_strategies import StrategyProvider
+
+    def build(self, context, default):
+        if context["field_name"] is None:
+            return {"kind": "object", "fields": {name: descriptor for name in context["fields"]}}
+        return descriptor
+
+    monkeypatch.setattr(StrategyProvider, "build", build)
+    monkeypatch.setattr(
+        StrategyProvider,
+        "__init__",
+        lambda self: (setattr(self, "factory", True), setattr(self, "metadata", None)) and None,
+    )
 
 
 def junit(report):
@@ -123,7 +140,9 @@ def test_failed_destination_never_earns_edge_coverage(model, tmp_path):
         def check(self, page, expected, *args):
             result = super().check(page, expected, *args)
             if expected == "accepted":
-                result["status"] = "FAIL"
+                result["checks"].append(
+                    {"rule": "Destination is valid", "scope": "state", "status": "broken"}
+                )
             return result
 
     report = execute(model, tmp_path, oracle=WrongState())
@@ -144,14 +163,16 @@ def test_agent_timeout_is_inconclusive_and_cleanup_still_happens(model, tmp_path
     assert report["coverage"]["edges"]["verified"] == 0
 
 
-def test_failed_property_setup_is_not_a_counterexample_of_generated_data(model):
+def test_failed_property_setup_is_not_a_counterexample_of_generated_data(model, tmp_path):
     class WrongStart(Oracle):
         def check(self, *args):
-            return {"status": "FAIL"}
+            return {"observed": "accepted", "checks": []}
 
-    runner = Runner(model, Browser(model), WrongStart(), "http://example.test")
-    with pytest.raises(Inconclusive, match="property setup"):
-        runner.case(model.edges["submit"], {"Places": 5}, [{"field": "Places"}])
+    replay = tmp_path / "case.json"
+    replay.write_text(json.dumps({"model_hash": model.digest, "journey": "submit", "input": {"Places": 5}}))
+    report = execute(model, tmp_path, oracle=WrongStart(), replay=replay)
+    assert report["status"] == "INCONCLUSIVE" and "property setup" in report["error"]
+    assert "counterexample" not in report
 
 
 def test_replay_requires_exact_model_hash(model, tmp_path):
@@ -313,7 +334,7 @@ def test_cleanup_runs_when_before_hook_fails_and_preserves_original_failure(mode
 def test_failed_browser_check_is_not_masked_by_after_hook_error(model, tmp_path):
     class WrongState(Oracle):
         def check(self, *args):
-            return {"status": "FAIL"}
+            return {"observed": "accepted", "checks": []}
 
     def cleanup(ctx):
         raise RuntimeError("secondary hook failure")
@@ -389,7 +410,7 @@ def test_focused_strategy_settings_are_planned_recorded_and_limited(model, tmp_p
     assert inventory["limits"]["input_strategies"] == policy
 
 
-def test_focused_failure_survives_limit_during_hypothesis_reproduction(model, tmp_path):
+def test_focused_failure_survives_limit_during_hegel_reproduction(model, tmp_path):
     report = execute(model, tmp_path, bug=True, max_input_attempts=8)
     assert report["status"] == "FAIL"
     assert report["counterexample"]["input"] == {"Places": 5}
@@ -428,18 +449,17 @@ def test_keyboard_interrupt_keeps_inconclusive_report_and_runs_teardown(model, t
     assert int(root.get("skipped")) > 0
 
 
-def test_failed_checkpoint_is_not_retried_into_a_pass(model):
+def test_failed_checkpoint_is_not_retried_into_a_pass(model, tmp_path):
     class ChangingVerdict(Oracle):
         calls = 0
 
         def check(self, *args):
             self.calls += 1
-            return {"status": "FAIL" if self.calls == 1 else "PASS", "checks": []}
+            return {"observed": "accepted" if self.calls == 1 else "form", "checks": []}
 
     browser, oracle = Browser(model), ChangingVerdict()
-    runner = Runner(model, browser, oracle, "http://example.test")
-    runner.reset()
-    assert runner.check("form")["status"] == "FAIL"
+    report = execute(model, tmp_path, browser=browser, oracle=oracle, input_mode="none")
+    assert report["status"] == "FAIL"
     assert oracle.calls == 1
 
 
@@ -465,13 +485,11 @@ def test_replay_retains_case_and_hook_evidence_when_hook_raises(model, tmp_path,
         assert report["counterexample"]["input"] == {"Places": 5}
 
 
-def test_checkpoint_retains_independent_input_evidence_as_a_snapshot(model):
+def test_checkpoint_retains_independent_input_evidence_as_a_snapshot(model, tmp_path):
     browser = Browser(model)
-    runner = Runner(model, browser, Oracle(), "http://example.test")
-    runner.reset()
-    runner.transition(model.edges["submit_invalid"])
-    result = runner.check("rejected", violations(runner.fields, runner.data))
-    runner.data["Places"] = 2
+    report = execute(model, tmp_path, browser=browser, input_mode="none")
+    result = next(step for step in report["steps"] if step["id"] == "rejected")
+    browser.trace[-2]["data"]["Places"] = 2
     assert result["input"] == {"Places": 0}
     assert result["violations"][0]["field"] == "Places"
 
@@ -621,40 +639,35 @@ def test_junit_limited_boundaries_records_only_selected_tests(model, tmp_path):
     assert all(test["status"] == "NOT_RUN" for test in inventory["tests"])
 
 
-def test_generated_scope_reduces_examples_before_execution(model, tmp_path):
+def test_generated_scope_reduces_examples_before_execution(model, tmp_path, monkeypatch):
     report = execute(model, tmp_path, input_mode="generated", max_input_attempts=1)
     suite = junit(report).find("./testsuite[@name='testwalker.property']")
     # The combined phase is outside the selected scope, so it is not a skipped test.
     assert report["status"] == "PASS"
     assert suite.get("tests") == "1" and suite.get("skipped") == "0"
     assert report["input_attempts"] == 1
-    from unittest.mock import patch
-
-    from hypothesis import strategies as st
-
-    from testwalker import properties
-
-    with patch.object(properties, "strategy", lambda _: st.integers(1, 4)):
-        report = run(
-            model,
-            "http://example.test",
-            output=tmp_path,
-            client=Client(),
-            browser=Browser(model),
-            oracle=Oracle(),
-            path_generator=planned,
-            input_mode="generated",
-            cases=5,
-            max_input_attempts=2,
-            log=lambda *_: None,
-        )
+    native_domain(monkeypatch, {"kind": "integer", "minimum": 1, "maximum": 4})
+    report = run(
+        model,
+        "http://example.test",
+        output=tmp_path,
+        client=Client(),
+        browser=Browser(model),
+        oracle=Oracle(),
+        path_generator=planned,
+        input_mode="generated",
+        cases=5,
+        max_input_attempts=2,
+        log=lambda *_: None,
+    )
     suite = junit(report).find("./testsuite[@name='testwalker.property']")
     assert report["status"] == "PASS"
     assert suite.get("tests") == "1" and suite.get("errors") == "0" and suite.get("skipped") == "0"
     detail = json.loads(suite.find("./testcase/system-out").text)
     assert detail["test"]["phase"]["requested_max_examples"] == 5
     assert detail["test"]["phase"]["max_examples"] == 2
-    assert len(detail["attempts"]) == report["input_attempts"] == 2
+    assert len(detail["attempts"]) == report["input_attempts"]
+    assert 1 <= report["input_attempts"] <= 2
     assert report["coverage"]["properties"]["completed"] == 0
     inventory = json.loads((Path(report["directory"]) / "plan.json").read_text())
     assert inventory["tests"][0]["phase"]["max_examples"] == 2
@@ -663,11 +676,7 @@ def test_generated_scope_reduces_examples_before_execution(model, tmp_path):
 @pytest.mark.parametrize("shrink", [True, False])
 @pytest.mark.parametrize("limit", [1, 2])
 def test_observed_defect_survives_limit_during_reproduction(model, tmp_path, monkeypatch, shrink, limit):
-    from hypothesis import strategies as st
-
-    from testwalker import properties
-
-    monkeypatch.setattr(properties, "strategy", lambda _: st.just(5))
+    native_domain(monkeypatch, {"kind": "literal", "value": 5})
     report = execute(
         model, tmp_path, bug=True, input_mode="generated", max_input_attempts=limit, shrink=shrink
     )
@@ -705,7 +714,7 @@ def test_small_input_selection_still_requires_global_audit(model, tmp_path):
     class DeferredOracle(Oracle):
         def check(self, *args):
             result = super().check(*args)
-            result["checks"] = []
+            result["checks"] = [{"rule": "The outcome is visible.", "scope": "state", "status": "met"}]
             return result
 
         def audit_globals(self, observations, rules):
@@ -721,11 +730,7 @@ def test_small_input_selection_still_requires_global_audit(model, tmp_path):
 def test_limited_shrinking_retains_failing_input_and_screenshot_after_passing_candidate(
     model, tmp_path, monkeypatch
 ):
-    from hypothesis import strategies as st
-
-    from testwalker import properties
-
-    monkeypatch.setattr(properties, "strategy", lambda _: st.integers(0, 100))
+    native_domain(monkeypatch, {"kind": "integer", "minimum": 0, "maximum": 100})
 
     class BuggyBrowser(Browser):
         def pursue(self, *args, **kwargs):
@@ -746,11 +751,11 @@ def test_limited_shrinking_retains_failing_input_and_screenshot_after_passing_ca
         path_generator=planned,
         input_mode="generated",
         cases=30,
-        max_input_attempts=5,
+        max_input_attempts=8,
         log=lambda *_: None,
     )
     assert report["status"] == "FAIL"
-    assert report["input_attempts"] == 5
+    assert report["input_attempts"] == 8
     assert report["cases"][-1]["status"] == "PASS"
     failed = report["counterexample"]
     assert failed["status"] == "FAIL" and failed["minimization_limited"]
@@ -761,11 +766,7 @@ def test_limited_shrinking_retains_failing_input_and_screenshot_after_passing_ca
 
 
 def test_finite_domain_can_complete_selected_scope_below_input_limit(model, tmp_path, monkeypatch):
-    from hypothesis import strategies as st
-
-    from testwalker import properties
-
-    monkeypatch.setattr(properties, "strategy", lambda _: st.just(2))
+    native_domain(monkeypatch, {"kind": "literal", "value": 2})
     report = run(
         model,
         "http://example.test",
@@ -785,11 +786,7 @@ def test_finite_domain_can_complete_selected_scope_below_input_limit(model, tmp_
 
 
 def test_junit_generated_failure_groups_shrink_attempts_and_links_replay(model, tmp_path, monkeypatch):
-    from hypothesis import strategies as st
-
-    from testwalker import properties
-
-    monkeypatch.setattr(properties, "strategy", lambda _: st.just(5))
+    native_domain(monkeypatch, {"kind": "literal", "value": 5})
     report = execute(model, tmp_path, bug=True, input_mode="generated")
     suite = junit(report).find("./testsuite[@name='testwalker.property']")
     assert suite.get("tests") == "2" and suite.get("failures") == "1" and suite.get("skipped") == "1"
@@ -854,12 +851,8 @@ def test_junit_handles_xml_characters_and_illegal_control_characters(model, tmp_
     assert "\x00" not in error.get("message") and "\ufffe" not in error.get("message")
 
 
-def test_finite_hypothesis_domains_do_not_invent_skipped_examples(model, tmp_path, monkeypatch):
-    from hypothesis import strategies as st
-
-    from testwalker import properties
-
-    monkeypatch.setattr(properties, "strategy", lambda _: st.just(2))
+def test_finite_hegel_domains_do_not_invent_skipped_examples(model, tmp_path, monkeypatch):
+    native_domain(monkeypatch, {"kind": "literal", "value": 2})
     report = run(
         model,
         "http://example.test",

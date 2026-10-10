@@ -113,7 +113,7 @@ Each run writes:
 
 The model, inventory and evidence directory must all be new; discovery refuses to overwrite reviewed work. Exit code 0 means discovery completed, **not that the application passed tests**. Exit code 2 indicates an error or partial discovery, with usable partial output when pages were inspected.
 
-The model deliberately has no generated property-test data sets: the page's constraints are not an independent oracle, and a successful submission does not establish the correct rejection outcome. Review the collected constraints, supply business data sets and connect acceptance/rejection states before running Hypothesis. Review same-URL states and custom controls especially carefully. Observed hyperlinks are distinguished from exercised form transitions in the inventory.
+The model deliberately has no generated property-test data sets: the page's constraints are not an independent oracle, and a successful submission does not establish the correct rejection outcome. Review the collected constraints, supply business data sets and connect acceptance/rejection states before running Hegel. Review same-URL states and custom controls especially carefully. Observed hyperlinks are distinguished from exercised form transitions in the inventory.
 
 No invented navigation repairs disconnected components or dead ends. These appear as review notes. A page with no discovered transitions produces an edge-free draft; add real journeys before `testwalker validate` or `plan` can accept it. Use GraphWalker independently to refine the resulting graph.
 

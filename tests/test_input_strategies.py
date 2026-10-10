@@ -1,6 +1,4 @@
 import pytest
-from hypothesis import find
-from hypothesis import strategies as st
 
 from testwalker.input_strategies import StrategyProvider, field_options, validate_policy
 
@@ -36,11 +34,10 @@ def test_bad_strategy_configuration_is_rejected(model, policy):
         validate_policy(policy, model.data_sets)
 
 
-def test_python_provider_returns_a_real_strategy_and_has_provenance(tmp_path):
+def test_python_provider_returns_a_hegel_domain_and_has_provenance(tmp_path):
     path = tmp_path / "inputs.py"
     path.write_text("""from __future__ import annotations
 from dataclasses import dataclass
-from hypothesis import strategies as st
 @dataclass
 class Range:
     low: int = 6
@@ -48,14 +45,14 @@ class Range:
 def input_strategy(context, default):
     context["field"]["example"] = 999
     bounds = Range()
-    return st.integers(min_value=bounds.low, max_value=bounds.high)
+    return {"kind": "integer", "minimum": bounds.low, "maximum": bounds.high}
 """)
     provider = StrategyProvider.load(path)
     context = {"field": {"example": 2}}
-    domain = provider.build(context, st.just(5))
-    assert find(domain, lambda value: True) == 6
+    domain = provider.build(context, {"kind": "literal", "value": 5})
+    assert domain == {"kind": "integer", "minimum": 6, "maximum": 9}
     assert context["field"]["example"] == 2
     assert provider.metadata["path"] == str(path)
     assert len(provider.metadata["sha256"]) == 64
-    with pytest.raises(TypeError, match="SearchStrategy"):
+    with pytest.raises(TypeError, match="Hegel strategy description"):
         StrategyProvider(lambda *_: [1, 2]).build(context, domain)

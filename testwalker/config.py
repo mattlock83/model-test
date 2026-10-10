@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 from dotenv.parser import parse_stream
 
 KEYS = {
+    "TESTWALKER_CORE_BIN",
     "GRAPHWALKER_BIN",
     "TYPESAFE_API_KEY",
     "TYPESAFE_MODEL",
@@ -88,14 +89,19 @@ class RuntimeConfig:
     chrome_profile: Path | None = None
     chrome_port: int = 9222
     text: dict = field(default_factory=dict, repr=False)
+    core_binary: Path | None = None
 
     @classmethod
     def load(cls, path, *, live=False, discovery=False):
         path = Path(path).expanduser().resolve()
         values = read_properties(path)
-        if not discovery and not values.get("GRAPHWALKER_BIN"):
-            raise ValueError("Set GRAPHWALKER_BIN in the properties file to your GraphWalker executable")
-        binary = None if discovery else executable(values["GRAPHWALKER_BIN"], path.parent, "GRAPHWALKER_BIN")
+        # GraphWalker is linked into the Rust core. Retain old properties files
+        # and the standalone executable for explicit legacy integrations.
+        graphwalker = values.get("GRAPHWALKER_BIN")
+        binary = (
+            executable(graphwalker, path.parent, "GRAPHWALKER_BIN") if graphwalker and not discovery else None
+        )
+        core = values.get("TESTWALKER_CORE_BIN")
         if live and not values.get("TYPESAFE_API_KEY", "").strip():
             raise ValueError("Set TYPESAFE_API_KEY in the same properties file for live Jev testing")
         cdp_url = values.get("CDP_URL", "")
@@ -117,4 +123,5 @@ class RuntimeConfig:
             chrome_profile=resolve_path(profile, path.parent) if profile else None,
             chrome_port=port,
             text={key: value for key, value in values.items() if key.startswith("TEXT_MODEL")},
+            core_binary=executable(core, path.parent, "TESTWALKER_CORE_BIN") if core else None,
         )

@@ -41,6 +41,7 @@ class HookContext:
     result: dict | None = None
     error: BaseException | None = None
     browser: Any = None
+    target: Any = None
     scratch: dict = field(default_factory=dict)
     report: dict | None = None
     walk: int | None = None

@@ -38,7 +38,7 @@ def test_relative_quoted_paths_resolve_from_config_not_working_directory(tmp_pat
     assert config.chrome_profile == directory / "chrome profile"
 
 
-def test_plan_requires_binary_but_no_api_key(tmp_path):
+def test_plan_uses_native_core_without_api_key(tmp_path):
     config = RuntimeConfig.load(properties(tmp_path, key=""))
     assert config.api_key == ""
     with pytest.raises(ValueError, match="TYPESAFE_API_KEY"):
@@ -48,7 +48,7 @@ def test_plan_requires_binary_but_no_api_key(tmp_path):
 @pytest.mark.parametrize(
     "contents, message",
     [
-        ("TYPESAFE_API_KEY=secret\n", "GRAPHWALKER_BIN"),
+        ("TESTWALKER_CORE_BIN=/does/not/exist\n", "existing executable"),
         ("GRAPHWALKER_BIN=/does/not/exist\n", "existing executable"),
         (f"GRAPHWALKER_BIN={sys.executable}\nGRAPHWALKER_BIN={sys.executable}\n", "Duplicate"),
         (f"GRAPHWALKER_BIN={sys.executable}\nCDP_URL=ftp://localhost\n", "CDP_URL"),

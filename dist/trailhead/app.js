@@ -30,17 +30,28 @@ const link = (state, label, secondary = false) =>
 const actions = (...items) => `<div class="actions">${items.join('')}</div>`;
 const rows = data => `<dl>${Object.entries(data).map(([key, value]) =>
   `<div><dt>${escapeHtml(key)}</dt><dd>${escapeHtml(value || 'None')}</dd></div>`).join('')}</dl>`;
+const fieldId = name => `field-${encodeURIComponent(name)}`;
 const field = (name, label, hint, values, type = 'text', multiline = false) => {
-  const attributes = `id="${name}" name="${name}" aria-describedby="${name}-hint"
-    ${errors[name] ? 'aria-invalid="true"' : ''}`;
-  return `<div class="field"><label for="${name}">${label}</label>${multiline
+  const id = fieldId(name);
+  const attributes = `id="${id}" name="${name}" aria-describedby="${id}-hint"
+    ${errors[name] ? `aria-invalid="true" aria-errormessage="${id}-error"` : ''}`;
+  return `<div class="field"><label for="${id}">${label}</label>${multiline
     ? `<textarea ${attributes} rows="3">${escapeHtml(values[name] || '')}</textarea>`
     : `<input ${attributes} type="${type}" value="${escapeHtml(values[name] ?? '')}" autocomplete="off">`}
-    <p class="hint" id="${name}-hint">${hint}</p></div>`;
+    <p class="hint" id="${id}-hint">${hint}</p></div>`;
 };
 const errorSummary = () => Object.keys(errors).length ? `<div class="errors" role="alert">
-  <h2>Check your details</h2><ul>${Object.values(errors).map(message => `<li>${escapeHtml(message)}</li>`).join('')}</ul>
+  <h2>Check your details</h2><ul>${Object.entries(errors).map(([name, message]) =>
+    `<li id="${fieldId(name)}-error">${escapeHtml(message)}</li>`).join('')}</ul>
   </div>` : '';
+
+function lengthError(name, value, minimum, maximum) {
+  const size = length(value);
+  if (!size && minimum > 0) return `${name} is required. Enter ${minimum}–${maximum} characters.`;
+  if (size < minimum) return `${name} is too short. Enter at least ${minimum} characters.`;
+  if (size > maximum) return `${name} is too long. Enter no more than ${maximum} characters.`;
+  return '';
+}
 
 function show(state, heading, content, eyebrow = 'TRAILHEAD / YOUR NEXT CHAPTER') {
   document.title = `Trailhead — ${heading}`;
@@ -58,8 +69,8 @@ function collect(form) {
 }
 function validateBooking(data) {
   const result = {};
-  if (length(data['Traveller name']) < 2 || length(data['Traveller name']) > 60)
-    result['Traveller name'] = 'Traveller name must contain 2–60 characters.';
+  const nameError = lengthError('Traveller name', data['Traveller name'], 2, 60);
+  if (nameError) result['Traveller name'] = nameError;
   if (!/^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(data['Contact email']))
     result['Contact email'] = 'Enter a valid contact email with a dotted domain.';
   if (!/^[+-]?\d+$/.test(data['Party size']) || Number(data['Party size']) < 1 || Number(data['Party size']) > 6)
@@ -130,13 +141,14 @@ function profileForm(state) {
       ? [link('profile_edit', 'Clear errors and revise', true)] : []))}`);
   app.querySelector('form').onsubmit = async event => {
     event.preventDefault(); profileDraft = collect(event.target); errors = {};
-    if (length(profileDraft['Display name']) < 2 || length(profileDraft['Display name']) > 40)
-      errors['Display name'] = 'Display name must contain 2–40 characters.';
+    const nameError = lengthError('Display name', profileDraft['Display name'], 2, 40);
+    if (nameError) errors['Display name'] = nameError;
     if (!/^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(profileDraft['Member email']))
       errors['Member email'] = 'Enter a valid member email with a dotted domain.';
     if (!['Email', 'SMS', 'None'].includes(profileDraft['Updates preference']))
       errors['Updates preference'] = 'Updates preference must be Email, SMS or None.';
-    if (length(profileDraft['Access notes']) > 80) errors['Access notes'] = 'Access notes must contain at most 80 characters.';
+    const notesError = lengthError('Access notes', profileDraft['Access notes'], 0, 80);
+    if (notesError) errors['Access notes'] = notesError;
     if (Object.keys(errors).length) return go('profile_error');
     try { await api('profile', { data: profileDraft }); go('profile_saved'); } catch (error) { serviceError(error); }
   };
@@ -151,8 +163,8 @@ function cancelForm(state) {
       ? [link('cancellation_details', 'Clear errors and revise', true)] : []))}`);
   app.querySelector('form').onsubmit = event => {
     event.preventDefault(); cancelDraft = collect(event.target); errors = {};
-    const size = length(cancelDraft['Cancellation reason']);
-    if (size < 5 || size > 120) errors['Cancellation reason'] = 'Cancellation reason must contain 5–120 characters.';
+    const reasonError = lengthError('Cancellation reason', cancelDraft['Cancellation reason'], 5, 120);
+    if (reasonError) errors['Cancellation reason'] = reasonError;
     go(Object.keys(errors).length ? 'cancellation_error' : 'cancellation_review');
   };
 }

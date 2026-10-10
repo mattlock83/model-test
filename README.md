@@ -1,17 +1,29 @@
 # testwalker
 
-A Python CLI framework that tests a website from a **GraphWalker business model**. A business analyst describes states, journeys, expected outcomes and input rules. The framework discovers the controls at runtime using [Jev Ultrafast](https://github.com/browser-use/jev-ultrafast).
+A Python CLI framework that tests websites and JSON-RPC APIs from a **GraphWalker business model**. A business analyst describes states, journeys, expected outcomes and input rules. For websites, the framework discovers controls at runtime using [Jev Ultrafast](https://github.com/browser-use/jev-ultrafast).
 
-There are **no UI selectors, page objects, browser action lists or assertion expressions in the models**. The same runner handles the booking and enquiry demos without site-specific test code.
+Web models contain **no UI selectors, page objects, browser action lists or assertion expressions**. The same runner handles the booking and enquiry demos without site-specific test code. API models add declarative request mappings and deterministic response predicates.
 
 - **GraphWalker Rust** generates seeded paths through the graph.
 - **Jev Ultrafast + Browser Harness** discover and operate observed browser controls.
 - **TypeSafe Jev** independently identifies the current business state and judges its requirements.
-- **Hypothesis** runs input testing, generating focused constraint cases by default and shrinking reproducible failures. Broader combinations are optional.
+- **Hegel** runs input testing, generating focused constraint cases by default and shrinking reproducible failures. Broader combinations are optional.
 
-The property-testing layer now uses Python's Hypothesis directly. [Hegel is built on Hypothesis](https://hegel.dev/); its TypeScript wrapper was removed with the JavaScript runner. This version does not invoke the Hegel protocol or claim to retain the Hegel package.
+A target-independent **Rust core** calls native GraphWalker and [Hegel](https://github.com/hegeldev/hegel-rust), schedules execution, calculates verdicts and verified coverage, and calls Jev. A bidirectional JSON-RPC connection lets the Python web adapter perform browser operations and prepare web evidence. Hegel is the only property engine; there is no Python property engine or alternate backend. See [architecture](docs/architecture.md) and the [adapter protocol](docs/protocol.md).
 
 **Start with the [plain-English testing guide](docs/testing.md)** for the workflow diagram, copyable commands, input counts, resets, Jev allowances and result meanings. The sections below provide installation and detailed reference information.
+
+## Test JSON-RPC APIs
+
+Testwalker can test its own API using two separate workers, with GraphWalker exploring sequences and Hegel generating input boundaries. This needs no browser or Jev key:
+
+```bash
+uv run testwalker self-test
+uv run testwalker self-test --plan
+uv run testwalker rpc --model models/my-api.json --target /path/to/api-server --target-arg=--stdio
+```
+
+Both commands support exploration, input tuning, lifecycle hooks, reports and individual case replay. The [RPC testing guide](docs/rpc-testing.md) explains declarative bindings, deterministic assertions and callbacks; [the bundled self-test model](models/rpc-selftest.json) provides a working example.
 
 ## Generate an initial model
 
@@ -36,26 +48,28 @@ Install the local package with Python 3.12+ and [uv](https://docs.astral.sh/uv/g
 uv tool install .
 # Or build and install a wheel locally:
 uv build --out-dir build
-uv tool install ./build/testwalker-3.2.0-py3-none-any.whl
+uv tool install ./build/testwalker-4.0.0-*.whl
 testwalker --help
 ```
 
-Chrome and a compatible **GraphWalker Rust executable** are external prerequisites. Install GraphWalker independently using its [installation guide](https://graphwalker.github.io/graphwalker-rs/getting-started.html). The package does not download or build it. Rust is only needed if you choose to build that executable yourself. The repository's [native dependency reference](graphwalker.lock.json) records the revision used for its integration checks. Jev's Git dependency is pinned in the package; source development dependencies are locked in `uv.lock`.
+Building from this checkout or a source archive requires **Rust 1.88+ and Cargo**, Python 3.12+, and a working platform linker. The package build compiles the Rust worker and includes it in a platform wheel. Installing that wheel does not require Rust or a separate GraphWalker executable. Chrome remains required for web runs. Cargo pins native GraphWalker and Hegel revisions in `Cargo.lock`; Python dependencies, including Jev Ultrafast, are pinned in `uv.lock`.
+
+For source development, run `uv sync` to install the editable package and build the core. The build also recognises this checkout's local `.tools/cargo` toolchain. To rebuild Rust directly, use `cargo build --release --locked`. Nothing is published by these commands.
 
 Models, demo HTML, Trailhead hooks and a sample configuration ship inside the wheel. The installed `testwalker` CLI works from any directory. `python -m testwalker` is an equivalent entry point. No shell launcher is required.
 
-Create `testwalker.properties` in your working directory, or copy [testwalker.properties.example](testwalker.properties.example) and edit it:
+For web runs, create `testwalker.properties` in your working directory, or copy [testwalker.properties.example](testwalker.properties.example) and edit it:
 
 ```properties
-GRAPHWALKER_BIN=/absolute/path/to/graphwalker
 TYPESAFE_API_KEY=your_jev_key
 ```
 
-Both settings come from this file; exported environment variables do not replace them. `GRAPHWALKER_BIN` must be an executable file path, not a shell command. Relative paths resolve from the properties file's directory; quote paths containing spaces. This local file is ignored by Git. Use `--config /path/to/settings.properties` for another location.
+Runtime settings come from this file; exported environment variables do not replace them. Relative paths resolve from the properties file's directory; quote paths containing spaces. This local file is ignored by Git. Use `--config /path/to/settings.properties` for another location.
 
 | Property | Meaning |
 | --- | --- |
-| `GRAPHWALKER_BIN` | Required for `plan`, `run` and `demo`. Path to the GraphWalker Rust CLI. |
+| `TESTWALKER_CORE_BIN` | Optional override for the bundled Rust worker executable. GraphWalker is linked into this worker. |
+| `GRAPHWALKER_BIN` | Accepted for legacy Python integrations; the CLI does not invoke it. |
 | `TYPESAFE_API_KEY` | Required for live `run` and `demo`. Your Jev key. |
 | `TYPESAFE_MODEL` | Optional decision model; default `jev-latest`. |
 | `CDP_URL` | Optional existing Chrome debugging endpoint. When supplied it must already be running. |
@@ -78,7 +92,7 @@ testwalker run \
   --max-calls 1000 --headed
 ```
 
-The CLI starts Chrome with a dedicated profile and waits for its debugging endpoint. `--headed` opens visible Chrome and focuses new test tabs. A browser started by the CLI is stopped afterward, in both visible and headless modes, including failed or interrupted runs. Add `--headed --keep-browser-open` to explicitly retain the test tab and browser for debugging. An existing ready endpoint is reused and never terminated. `--cdp-url` overrides the configured endpoint. Credentials are not written to the graph or report. `validate` and `serve` do not need configuration; `plan` needs only GraphWalker, without a browser or API key.
+The CLI starts Chrome with a dedicated profile and waits for its debugging endpoint. `--headed` opens visible Chrome and focuses new test tabs. A browser started by the CLI is stopped afterward, in both visible and headless modes, including failed or interrupted runs. Add `--headed --keep-browser-open` to explicitly retain the test tab and browser for debugging. An existing ready endpoint is reused and never terminated. `--cdp-url` overrides the configured endpoint. Credentials are not written to the graph or report. `validate` and `serve` do not need configuration; `plan` uses the native core, without a browser or API key.
 
 The execution components are independent of model authoring:
 
@@ -101,15 +115,15 @@ Property campaigns run after the graph walk. Each input attempt starts in a fres
 | `--walks N` | Repeat graph traversal from the start with seeds `seed`, `seed+1`, etc. (1–100). Each walk must plan the targets. Verified coverage is the union. |
 | `--max-steps N` | Maximum graph elements per walk, including state checkpoints. A route exceeding this budget is inconclusive before browser execution. |
 | `--input-mode all` | Generated examples and explicit boundaries; opt-in broader exploration. |
-| `--input-mode generated` | Hypothesis-generated examples only. |
-| `--input-mode focused` | Default: Hypothesis generates within separately planned constraint partitions. |
-| `--input-mode boundaries` | Exact boundary values, executed through Hypothesis. |
+| `--input-mode generated` | Hegel-generated examples only. |
+| `--input-mode focused` | Default: Hegel generates within separately planned constraint partitions. |
+| `--input-mode boundaries` | Exact boundary values, executed through Hegel. |
 | `--input-strategies PATH` | JSON generation defaults and per-field overrides for focused mode. |
-| `--strategy-provider PATH` | Trusted Python extension providing custom Hypothesis strategies for focused mode. |
+| `--strategy-provider PATH` | Trusted Python extension providing declarative custom Hegel domains. |
 | `--input-mode none` | Graph journeys only; reports explicitly say input campaigns were disabled. Nominal data submission journeys still execute. |
 | `--cases N` | Generated examples per phase (1–200, default 1). Focused mode has a phase per constraint partition; generated mode uses per-field and combined phases. Shrinking can add attempts. |
 | `--max-input-attempts N` | Select up to N property inputs in model order before execution (default 1000). Shrinking and reproduction share this attempt limit. Passing the selected scope can produce PASS. |
-| `--no-shrink` | Disable the shrinking phase. Hypothesis may still replay a failing example to confirm it. |
+| `--no-shrink` | Disable the shrinking phase. Hegel may still replay a failing example to confirm it. |
 | `--max-calls N` | Hard cap on Jev requests across the whole run (default 1000). |
 | `--max-actions N` | Maximum browser decision cycles per journey (default 25). |
 | `--threshold N` | Required Jev confidence (default 0.85). |
@@ -123,7 +137,7 @@ Hooks can reset a backend, seed test data, call APIs, or make deterministic asse
 
 ## GraphWalker walk modes
 
-All seven native modes are available through `--generator`, or through the generator already in the exported model. The framework passes expressions to the configured native GraphWalker CLI. See [GraphWalker’s generator reference](https://graphwalker.github.io/graphwalker-rs/generators.html).
+All seven native modes are available through `--generator`, or through the generator already in the exported model. The framework passes expressions to the linked native GraphWalker library. See [GraphWalker’s generator reference](https://graphwalker.github.io/graphwalker-rs/generators.html).
 
 | Mode | Usage and constraints |
 | --- | --- |
@@ -193,7 +207,7 @@ uv run testwalker demo --site trailhead --demo-hooks --headed \
   --max-calls 10000
 ```
 
-This selects all seven campaigns and 186 focused Hypothesis phases, with one example per phase. Reproduction and shrinking can add attempts; no combined-field exploration runs by default. Increase `--cases` or configure per-field strategies without changing the model or runner; see [input strategies](docs/input-strategies.md). For broader exploration, explicitly add `--input-mode all --cases 20 --max-input-attempts 2000`; that offers up to 826 planned inputs. See the [boundary coverage table](docs/testing.md#default-focused-boundary-checks). For full graph exploration with just two generated inputs, see the [small-scope command](docs/testing.md#full-trailhead-graph-with-just-two-property-inputs).
+This selects all seven campaigns and 186 focused Hegel phases, with one example per phase. Reproduction and shrinking can add attempts; no combined-field exploration runs by default. Increase `--cases` or configure per-field strategies without changing the model or runner; see [input strategies](docs/input-strategies.md). For broader exploration, explicitly add `--input-mode all --cases 20 --max-input-attempts 2000`; that offers up to 826 planned inputs. See the [boundary coverage table](docs/testing.md#default-focused-boundary-checks). For full graph exploration with just two generated inputs, see the [small-scope command](docs/testing.md#full-trailhead-graph-with-just-two-property-inputs).
 
 ## Chrome connections
 
@@ -247,7 +261,7 @@ Start your application separately. The model's `entry path` is relative to the s
 3. Independently identify the destination state and check its rules. Credit an edge only after verification passes. States describe business situations and can share a URL.
 4. After the graph walk, run the selected property phases. The model's data constraints determine whether each input should be accepted or rejected.
 5. Before every input attempt, open a fresh tab and replay a shortest setup route to the form. Optional reset hooks restore backend fixtures. Setup and property attempts do not increase graph coverage.
-6. Submit the exact input once and verify its outcome. Hypothesis can reproduce and shrink failures within the remaining allowance; an observed defect is retained if minimization reaches that limit.
+6. Submit the exact input once and verify its outcome. Hegel can reproduce and shrink failures within the remaining allowance; an observed defect is retained if minimization reaches that limit.
 7. Check requested graph coverage and outstanding global requirements, perform cleanup, and write reports. Stop at the first defect or unverifiable check.
 
 See the [workflow diagram and input-count examples](docs/testing.md). A fresh tab does not clear cookies or backend state; stateful applications need appropriate [reset hooks](docs/hooks.md).
@@ -272,7 +286,7 @@ Semantic navigation and judging remain probabilistic, even though graph generati
 
 The default confidence threshold is **0.85**, maximum model calls **1000**, and maximum decision cycles per journey **25**. Operation and speculative target questions share a request; rule checks and field bindings are batched. Exact requests are cached within a run. No provider retries silently exceed the call cap. Reports count calls, cache hits and any provider-reported token usage. A request cap is not a dollar budget; actual cost and full-run call volume need measurement with your key.
 
-`--input-mode focused` is the default: Hypothesis generates within separately scheduled constraint partitions, varying one field while others remain valid. `--cases` defaults to **1 per partition** and can be raised without changing implementation. Singleton checks exhaust naturally. Per-field JSON settings and optional custom Hypothesis providers are described in [input strategies](docs/input-strategies.md). For broad per-field and combined generation, select `generated` or `all`. Use `--max-calls` to cap Jev requests; hitting it is inconclusive, not a partial pass.
+`--input-mode focused` is the default: Hegel generates within separately scheduled constraint partitions, varying one field while others remain valid. `--cases` defaults to **1 per partition** and can be raised without changing implementation. Singleton checks exhaust naturally. Per-field JSON settings and optional custom Hegel domain providers are described in [input strategies](docs/input-strategies.md). For broad per-field and combined generation, select `generated` or `all`. Use `--max-calls` to cap Jev requests; hitting it is inconclusive, not a partial pass.
 
 `--max-input-attempts` determines the selected property scope before execution. A smaller value does not by itself make the result inconclusive. Reports show selected phase completion separately from completion of full campaigns, and retain the available phase and example counts. A provider error, uncertain outcome or failed setup within a selected test still prevents PASS. Global business requirements must still be verified even when the input scope is small.
 
@@ -291,7 +305,7 @@ Detailed Jev transcripts are stored under `evidence/` and loaded only when you e
 
 PNG images are stored under `screenshots/` and referenced in JSON and JUnit evidence. Capture adds browser/disk work but no Jev requests. `--no-screenshots` disables capture while retaining the graph and results viewer. Existing historical reports do not acquire screenshots retroactively; the new viewer and images are produced by subsequent runs.
 
-The selected seeded graph paths, nominal graph inputs and explicit boundary inputs are computed before browser actions. Hypothesis phases are planned beforehand, but their actual generated inputs and shrinking are determined during execution.
+The selected seeded graph paths, nominal graph inputs and explicit boundary inputs are computed before browser actions. Hegel phases are planned beforehand, but their actual generated inputs and shrinking are determined during execution. Successful duplicate inputs within a phase are not resubmitted.
 
 ## JUnit and planned test inventory
 
@@ -304,7 +318,7 @@ Before run hooks or browser actions, Testwalker generates **all selected seeded 
 | Graph starting state | One verification per selected walk. |
 | Graph journey | One test per edge occurrence, including verification of its destination. Repeated visits have distinct test identities. Navigation alone cannot pass a test. |
 | Explicit boundary input | Exact input and expected validity are known before execution. Each is a separate test. |
-| Hypothesis generation phase | One test per selected field phase or combined-input phase. `--cases` supplies the requested maximum examples; input-scope selection may reduce that maximum. Actual attempts, failure reproduction and shrinking are recorded inside the phase. Finite domains can finish with fewer examples. |
+| Hegel generation phase | One test per selected field phase or combined-input phase. `--cases` supplies the requested maximum examples; input-scope selection may reduce that maximum. Actual attempts, failure reproduction and shrinking are recorded inside the phase. Finite domains can finish with fewer examples. |
 | Overall run outcome | One additional JUnit test accounts for coverage, global requirements, planning, hooks and cleanup. |
 
 JUnit maps a business defect to `<failure>`, an attempted but inconclusive check to `<error>`, and selected tests never reached to `<skipped>`. A partially executed generation phase whose outcome cannot be verified is an error; later selected phases or boundary cases are skipped. Work excluded by `--max-input-attempts` is outside the inventory, rather than skipped. No fictitious skipped generated examples are added. The overall run outcome also fails or errors when the run cannot pass, so an aborted run cannot look successful merely because its remaining selected tests were skipped. A defect can therefore appear on both its individual test and the overall result.
@@ -360,7 +374,7 @@ testwalker plan --model models/feedback.json
 testwalker serve
 ```
 
-`plan` validates and prints an actual GraphWalker traversal without starting a browser or calling an API. It is a planning command, not an offline browser test. Python tests cover contracts, Jev choices, literal input entry, confidence and budgets, Hypothesis shrinking, coverage and replay. Native GraphWalker tests run when `testwalker.properties` supplies its executable. Build the local wheel and source archive with `uv build --out-dir build`; no publishing step is needed.
+`plan` validates and prints an actual GraphWalker traversal without starting a browser or calling an API. It is a planning command, not an offline browser test. Python tests cover contracts, Jev choices, literal input entry, confidence and budgets, Hegel shrinking, coverage and replay. Native core tests exercise GraphWalker, Hegel, JSON-RPC and generic target adapters directly. Optional legacy CLI integration tests still use `GRAPHWALKER_BIN`. Build the local wheel and source archive with `uv build --out-dir build`; no publishing step is needed.
 
 The framework currently handles one graph, ordinary visible HTML controls and bounded data dictionaries. It rejects native action scripts, guards, browser targets and assertion DSLs. Cross-field constraints and arbitrary generator programs are outside this vocabulary; relational outcome requirements can be written as prose, but are not translated into constraint solvers. Rejection must be modeled as a distinguishable business state.
 
